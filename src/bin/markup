@@ -1,0 +1,598 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+# preprocessである程度形を揃えた入力を、HTMLに変換する。
+# Think GNUの書法を反映したベタなプログラムで変換しているので、
+# あまり使いまわしは効かない。
+
+use strict;
+use warnings qw(FATAL all);
+use UNIVERSAL::require;
+use charnames ':full';
+use Params::Validate qw(validate SCALAR SCALARREF ARRAYREF);
+use Cwd 'abs_path';
+use FindBin;
+use lib "$FindBin::RealBin/../lib";
+
+use Markup::InputDependent qw(
+	h3_or_h5 spit_h2_with_or_without_id spit_h3_without_id
+);
+use Markup::EscapeHyper 'escape_hyper';
+use Lstg 'lstg';
+use Canon qw($CANON_DIR $IN_PRE $NOT_PRE $PRED);
+use HtmlPrologue 'html_prologue';
+use ReadFile 'read_file';
+
+my $file;
+BEGIN
+{
+	$file = abs_path $ARGV[0];
+	my ($tune) = $file =~ m!\A.*/(.*)\z!;
+	"Markup::$tune"->use;
+}
+
+# before()とafter()は、入力ファイル(名)によって定義されたりされなかったりする。
+# それは、Markup::入力ファイル(名)というモジュールがあるかないか、
+# あったとしてその中にbefore()やafter()の定義があるかで決まる。
+# これらは、メモリに読み込んだファイルイメージ($main::text)の参照を得て、
+# それに対して適切な整形を行う。
+# before()は、preprocessで取り切れなかった入力の不揃いを正したり、
+# この段階で行っておいた方が都合のいいマークアップ(先行マークアップ)を行う。
+# after()は、ファイル(名)に依存した後処理を行う。
+# 今のpreprocessは十分に賢いので、before()が入力の不揃いを正すことはない。
+# ただ、Markup::tga03のbefore()は、先行マークアップを行う。
+# after()が呼ばれるのは、入力(出力)がtga0[03]のときである。
+# 前者では、目次を作成するために、かなり大掛りな処理を行う。
+# 後者では、些細な処理を行う。
+# 詳細はMarkup::tga0[03]を参照されたい。
+
+sub before(\$);
+sub after(\$);
+
+my %id; # アンカーをキーとする。
+
+sub main();
+main;
+exit;
+
+sub meta_links();
+sub common_markup(%);
+sub main()
+{
+	binmode STDOUT, ':utf8'; # binmodeの復権である。
+	my $text = read_file $file;
+	my $meta_links = meta_links;
+
+	before $text if defined &before;
+
+	my $title;
+	common_markup text => \$text, title => \$title;
+	$title .= ' | Think GNU' unless $title =~ /Think GNU/;
+
+	after $text if defined &after;
+
+	$text =~ s/$IN_PRE//sgo;
+	$text =~ s/$PRED//sgo;
+	$text =~ s/(?<=^<),//mg;
+	escape_hyper $text;
+	escape_hyper $title;
+	print html_prologue $title;
+	print $meta_links;
+	print "<hr/>\n";
+	print $text;
+	print "<hr/>\n";
+	print $meta_links;
+	print "</body></html>\n";
+}
+
+sub meta_links()
+{
+	my @lstg = lstg;
+	my @next = my @prev = @lstg;
+	shift @next;
+	push @next, undef;
+	unshift @prev, undef;
+	my %lstg;
+	for (my $i = 0; $i < @lstg; $i++) {
+		my $stem = my $next = $lstg[$i];
+		$lstg{"$CANON_DIR/$stem"} = [$next[$i], $prev[$i]];
+	}
+	my $rv = "<ul>\n";
+	$rv .= qq!<li><a href="../orig/copying">取り扱い注意</a></li>\n!;
+	my ($next, $prev) = @{$lstg{$file}};
+	if (defined $next) {
+		$rv .= qq!<li><a href="$next.html">次→</a></li>\n!;
+	}
+	if (defined $prev) {
+		$rv .= qq!<li><a href="$prev.html">←前</a></li>\n!;
+		$rv .= qq!<li><a href="tga00.html">まえがき、目次</a></li>\n!;
+	}
+	$rv .= qq!<li><a href="../">(HTML版)Think GNU配布</a></li>\n</ul>\n!;
+	$rv;
+}
+
+sub mark_h1_and_get_title($);
+sub mark_hr($);
+sub mark_h2($);
+sub mark_ol_or_ul($);
+sub mark_h3($);
+sub mark_hmisc($);
+sub mark_dl($);
+sub mark_pre($);
+sub mark_table_pre($);
+sub mark_auto_pre($);
+sub mark_references($);
+sub mark_footnotes($);
+sub mark_p($);
+sub join_closing_li_to_previous_lines($);
+sub common_markup(%)
+{
+	validate(@_,{
+		text => {type => SCALARREF},
+		title => {type => SCALARREF},
+	});
+	my ($text_ref, $title_ref) = do {
+		my %p = @_;
+		($p{text}, $p{title});
+	};
+
+	# 最も無害。
+	$$title_ref = mark_h1_and_get_title $text_ref;
+	mark_hr $text_ref;
+
+	mark_h2 $text_ref;
+	mark_ol_or_ul $text_ref;
+
+	# mark_ol_or_ulの後でないといけない。
+	# さもなくば、行頭の^d+\.をmark_h3が、<h3/>と誤認識する。
+	mark_h3 $text_ref;
+
+	# mark_auto_preに先行しなければならない。
+	# さもなくば、^4-4\.fsf-hqをmark_auto_preが、<pre/>にしてしまう。
+	mark_hmisc $text_ref;
+
+	mark_dl $text_ref;
+	mark_pre $text_ref;
+
+	# mark_auto_preに先行しなければならない。
+	# さもなくば、<tpre/>中のアスキーアート状の部分を
+	# mark_auto_preが、<pre/>にしてしまう。
+	mark_table_pre $text_ref;
+
+	mark_auto_pre $text_ref;
+
+	# mark_{references,footnotes}の対象が
+	# mark_auto_preされうる部分を含むことがあるので、
+	# これらをmark_auto_preの後にしないと、
+	# これらはその部分を<p/>にしてしまう。
+	# その場合、その部分はmark_auto_preされなくなってしまう。
+	mark_references $text_ref;
+	mark_footnotes $text_ref;
+
+	mark_p $text_ref;
+
+	join_closing_li_to_previous_lines $text_ref;
+}
+
+sub mark_h1_and_get_title($)
+{
+	my ($r) = @_;
+	$$r =~ s!\A(.*)(?=\n)!<h1>$1</h1>!;
+	$1;
+}
+
+sub mark_hr($)
+{
+	my $hr_like = qr/^-+$/m;
+	my ($r) = @_;
+	$$r =~ s!^$hr_like!<hr/>!mg;
+}
+
+sub spit_h2($);
+sub mark_h2($)
+{
+	my ($text_ref) = @_;
+	$$text_ref =~ s/^((?:■|□.*□|◇).*)$/spit_h2 $1/mge;
+}
+
+my ($h_id, $spit_h2);
+BEGIN
+{
+	$h_id = 0;
+	$spit_h2 = spit_h2_with_or_without_id h_id_ref => \$h_id, file => $file;
+}
+sub spit_h2($)
+{
+	my ($line) = @_;
+	return $line if $line =~ s!\A(■.*)\Z!<h2>$1</h2>!;
+	$spit_h2->($line);
+}
+
+sub spit_ol_or_ul(%);
+sub mark_ol_or_ul($)
+{
+	my ($text_ref) = @_;
+	$$text_ref =~ s{
+		<([ou])l>\n
+		(.*?)\n # <ol>~</ol>か、<ul>~</ul>にはさまれた部分。
+		</ \1 l>\n
+	}{
+		spit_ol_or_ul type => $1, text => $2;
+	}xsge;
+}
+
+sub push_li_segment(%);
+sub spit_ol_or_ul(%)
+{
+	validate(@_,{
+		type => {type => SCALAR},
+		text => {type => SCALAR},
+	});
+	my ($list_type, $text) = do {
+		my %p = @_;
+		($p{type}, $p{text});
+	};
+	$text =~ s/\A\s*(?:\d+\.|・)\s*//;
+	$text =~ s/\n*\z//s;
+	my @list = split /\n\s*(?:\d+\.|・)\s*/, $text;
+	my $list = "<${list_type}l>\n";
+	foreach my $item (@list) {
+		my @item;
+		# $itemを@item化する。
+		$item =~ s{
+			(?:\A|(?<=\n)) # 文字列の先頭か\nの次。
+			(
+				[^<\n].*? # 事前マークアップされていない行
+			| # か
+				<pre>.*?</pre> # これ。
+			)
+			(?:\z|\n) # 文字列の末尾か\n。
+		}{
+			push_li_segment item => \@item, segment => $1;
+		}xsge;
+		$item = "<li>" . join("\n", @item) . "</li>\n";
+		$list .= $item;
+	}
+	"$list</${list_type}l>\n";
+}
+
+sub push_li_segment(%)
+{
+	validate(@_,{
+		item => {type => ARRAYREF},
+		segment => {type => SCALAR}, # 剥き出しの行か、<pre/>。
+	});
+	my ($item_array_ref, $segment) = do {
+		my %p = @_;
+		($p{item}, $p{segment});
+	};
+	if ($segment =~ /\A<pre>/) {
+		$segment =~ s/\n*\z/\n/;
+	} else {
+		$segment = "<p>$segment</p>";
+	}
+	push @$item_array_ref, $segment;
+}
+
+sub spit_h3($);
+sub mark_h3($)
+{
+	my ($text_ref) = @_;
+	$$text_ref =~ s{
+		(^
+			(?:
+				\d+\.
+			|
+				〈(?:ChangeLog|リスト|補遺|読者)
+			).*
+		$)
+	}{
+		spit_h3 $1;
+	}xmge;
+}
+
+sub spit_h3($)
+{
+	my ($title) = @_;
+	my $simple = spit_h3_without_id title => $title, file => $file;
+	return $simple if defined $simple;
+	my $_id = '';
+	if ($title =~ /\A\d+\./) {
+		$_id = qq! id="h.$h_id"!;
+		$h_id++;
+	} else {
+		$_id = qq! id="addendum"! if $title =~ /\A〈補遺〉/;
+	}
+	"<h3$_id>$title</h3>";
+}
+
+sub mark_hmisc($)
+{
+	my $h3_or_h5 = h3_or_h5 $file;
+	my ($r) = @_;
+	$$r =~ s!^(\d+-\d+\..*)$!<h4>$1</h4>!mg;
+	$$r =~ s!^(◎.*)$!<$h3_or_h5>$1</$h3_or_h5>!mgo;
+}
+
+# ‘s/パターン/置換文/e’の‘置換文’に置く関数を、spit_*と名付ける。
+sub spit_dl($);
+sub mark_dl($)
+{
+	my ($text_ref) = @_;
+	$$text_ref =~ s!(?<=\n)<dl>\n(.*?)</dl>\n!spit_dl $1!sge;
+}
+
+sub spit_dl($)
+{
+	my ($text) = @_;
+	my @list = split /\n(?=●)/, $text;
+	$text = "<dl>\n";
+	foreach my $item (@list) {
+		my @lines = split /\n/, $item;
+		my $first_line = $lines[0];
+		if ($first_line =~ /\A●.*…/) {
+			# $itemは1行で<dt/>…<dd/>という構造のはず。
+			@lines == 1 or
+				die @lines;
+			$first_line =~ s{
+				\A●(.*)…(.*)\z
+			}!<dt>●$1</dt><dd><p>$2</p></dd>\n!x;
+			$text .= $first_line;
+			next;
+		}
+		$text .= "<dt>$first_line</dt>\n<dd>\n";
+		foreach my $line (@lines[1..$#lines]) {
+			$text .= "$line\n" if $line ne '';
+		}
+		$text .= "</dd>\n";
+	}
+	"$text</dl>\n";
+}
+
+sub spit_pre(%);
+
+sub mark_pre($)
+{
+	my ($r) = @_;
+	$$r =~ s{
+		<pre>\n
+		(.*?)
+		</pre>\n
+	}{
+		spit_pre text => $1, top_break => '', bottom_break => '';
+	}xsge;
+}
+
+sub mark_table_pre($)
+{
+	my ($r) = @_;
+	$$r =~ s{
+		(?<=\n)
+		# <tpre>のある行から遡って、テーブル見出しを認識する。
+		# 遡って、行頭に空白以外があったらそこが見出しの始まり。
+		(
+			[^[:blank:]][^\n]*\n # 頭に空白以外がある行。
+			(?:[[:blank:]]+[^\n]*\n)*? # 頭に空白がある行の連続。
+		)
+		<tpre>\n
+		(.*?)
+		</tpre>\n
+	}{
+		my $br = $1 =~ tr/\n// == 1 ? '' : "\n";
+		spit_pre text => "$1$2", top_break => $br, bottom_break => '';
+	}xsge;
+}
+
+# 「プログラミングPerl」 p201~202 「自分で文字属性を定義する」を参照されたい。
+my $auto_pre_char;
+BEGIN
+{
+	my @exclude = qw(< >);
+	grep { $_ = '-' . sprintf '%x', ord $_; } @exclude;
+	sub auto_pre_ascii()
+	{
+		join "\n", "0\t7f", @exclude;
+	}
+	$auto_pre_char = "\\p{auto_pre_ascii}“”«»♥¿…〜\N{IDEOGRAPHIC SPACE}";
+}
+sub mark_auto_pre($)
+{
+	# アスキーアート状のものだけでなく、
+	# たとえば以下のようなものも<pre/>と認識する。
+
+	# League for Programming Freedom
+	# 1 Kendall Square #143
+	# P.O.Box 9171
+	# Cambridge,MA 02139
+	# U.S.A
+	# 電話番号 (617)243-4091
+	# 電子メール league@prep.ai.mit.edu
+
+	my ($r) = @_;
+	$$r =~ s{
+		((?<=\n)(?:
+			(?:
+				[$auto_pre_char]{0,80}?
+			|
+				電話番号[^\n]*
+			|
+				電子メール[^\n]*
+			|
+				$IN_PRE[^\n]*
+			)\n
+		|
+			\n
+		){3,})
+	}{
+		spit_pre text => $1, top_break => "\n", bottom_break => "\n";
+	}xsgeo;
+}
+
+sub spit_pre(%)
+{
+	validate(@_,{
+		text => {type => SCALAR},
+		top_break => {type => SCALAR},
+		bottom_break => {type => SCALAR},
+	});
+	my ($text, $top_break, $bottom_break) = do {
+		my %p = @_;
+		($p{text}, $p{top_break}, $p{bottom_break});
+	};
+	$text =~ s/\A\n*//s;
+	$text =~ s/\n*\z//s;
+	return "\n" if $text eq '';
+	$text =~ s/^/$PRED/mg;
+	"$top_break<pre>\n$text\n</pre>\n$bottom_break";
+}
+
+sub spit_dt_dd_id(%);
+sub spit_internal_href(%);
+
+sub spit_references($);
+sub mark_references($)
+{
+	my ($r) = @_;
+	$$r =~ s{
+		参考文献\n # 行: 「参考文献」から
+		(.*?\n)
+		(?=\n) # 空行の直前まで。
+	}{
+		spit_references $1
+	}xse;
+	$$r =~ s{
+		(?<![.>]) # マークアップされていない
+		(★\d+) # これら。
+		((?:・\d+)?) # ★1・2となっている場合がある。
+	}{
+		spit_internal_href prefix => 'r', anchor => $1, extra => $2;
+	}xsge;
+}
+
+sub spit_references($)
+{
+	my ($refs) = @_;
+	my @refs = split /\n(?=★\d+)/, $refs;
+	my $id = 'a';
+	foreach my $ref (@refs) {
+		$ref =~ s{
+			\A(★\d+)\n(.*)\z
+		}{
+			spit_dt_dd_id(
+				prefix => 'r', dt => $1, dd => $2, id => $id
+			);
+		}xse;
+		$id{$1} = $id++;
+		$ref =~ s/\n*\z/\n/;
+	}
+	"<h2>参考文献</h2>\n<dl>\n" . join('', @refs) . "</dl>\n";
+}
+
+sub spit_footnotes(%);
+sub mark_footnotes($)
+{
+	my ($r) = @_;
+	$$r =~ s{
+		(?<=\n)([^\n]*【脚注】[^\n]*\n) # 「【脚注】」を含む行から
+		\n* # その行の直後に空行がある場合があるので注意。
+		(.*?\n)
+		(?= # 脚注の終りを示す以下の直前まで。
+			<hr/>
+		|
+			\Z
+		)
+	}{
+		spit_footnotes title => $1, footnotes => $2;
+	}xse;
+	$$r =~ s{
+		(?<![.>]) # マークアップされていない
+		([◆|*]\d+) # これら。
+		((?:[,|・]\d+)?) # ◆1,2、*3・4となっている場合がある。
+	}{
+		spit_internal_href prefix => 'n', anchor => $1, extra => $2;
+	}xsge;
+}
+
+sub spit_footnotes(%)
+{
+	validate(@_,{
+		title => {type => SCALAR},
+		footnotes => {type => SCALAR},
+	});
+	my ($title, $footnotes) = do {
+		my %p = @_;
+		($p{title}, $p{footnotes});
+	};
+	$title =~ s!\A(.*)\Z!<h2>$1</h2>!;
+	my @notes = split /\n(?=[◆|*]\d+\s*)/, $footnotes;
+	my $id = 'a';
+	foreach my $note (@notes) {
+		$note =~ s{
+			\A([◆|*]\d+)\s*(.*)\Z
+		}{
+			spit_dt_dd_id(
+				prefix => 'n', dt => $1, dd => $2, id => $id
+			);
+		}xse;
+		$id{$1} = $id++;
+		$note =~ s/\n*\z/\n/;
+	}
+	"$title\n<dl>\n" . join('', @notes) . "</dl>\n";
+}
+
+my $to_be_marked_p;
+# [^<>]だけだと\nが含まれることになるので、明示的に取り除く。
+BEGIN { $to_be_marked_p = qr/^([^<>\n].*)$/m; }
+
+sub spit_dt_dd_id(%)
+{
+	validate(@_,{
+		prefix => {type => SCALAR},
+		dt => {type => SCALAR},
+		dd => {type => SCALAR},
+		id => {type => SCALAR},
+	});
+	my ($prefix, $dt, $dd, $id) = do {
+		my %p = @_;
+		($p{prefix}, $p{dt}, $p{dd}, $p{id});
+	};
+	$dd =~ s/\n*\z//;
+	$dd =~ s!$to_be_marked_p!<p>$1</p>!g;
+	$dd =~ s/\A<p>/<p\n>/;
+	qq!<dt id="$prefix.$id">$dt</dt><dd>$dd\n</dd>!;
+}
+
+sub spit_internal_href(%)
+{
+	validate(@_,{
+		prefix => {type => SCALAR},
+		anchor => {type => SCALAR},
+		extra => {type => SCALAR},
+	});
+	my ($prefix, $anchor, $extra) = do {
+		my %p = @_;
+		($p{prefix}, $p{anchor}, $p{extra});
+	};
+	my $id = $id{$anchor};
+	$id = 'TODO' unless defined $id;
+	qq!<a href="#$prefix.$id">$anchor$extra</a>!;
+}
+
+# <マークアップ>されていない部分を<p/>にする。
+sub mark_p($)
+{
+	my ($r) = @_;
+	$$r =~ s!$to_be_marked_p!<p>$1</p>!mg;
+	$$r =~ s!^$NOT_PRE(.*)$!<p>$1</p>!mgo;
+}
+
+sub join_closing_li_to_previous_lines($)
+{
+	my ($text_ref) = @_;
+	$$text_ref =~ s!\n*(?=</li>)!!sg;
+}

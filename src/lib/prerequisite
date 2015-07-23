@@ -1,0 +1,41 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+use strict;
+use warnings;
+use English '$EVAL_ERROR';
+
+# GNUmakefileの下請け。
+# makeに必要なPerlモジュールの存在をチェックする。
+
+my %debian = (
+	'UNIVERSAL::require' => 'libuniversal-require-perl',
+	'Params::Validate' => 'libparams-validate-perl',
+);
+
+sub check($)
+{
+	my ($module) = @_;
+	my $found;
+	if ($module eq 'UNIVERSAL::require') {
+		eval { require UNIVERSAL::require; };
+		$found = 1 if $EVAL_ERROR eq '';
+	} else {
+		$found = $module->use;
+	}
+	$found or
+		die <<"!";
+${module}をインストールしてください。
+Debian GNU/Linuxでは、‘\$ sudo aptitude install $debian{$module}’
+とします。
+!
+}
+
+# binmode STDERR, ':utf8' # 無くてもいいみたい。
+check 'UNIVERSAL::require';
+check 'Params::Validate';

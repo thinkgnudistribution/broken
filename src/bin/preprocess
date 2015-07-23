@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+use strict;
+use warnings;
+use UNIVERSAL::require;
+use Fatal 'open';
+use Cwd 'abs_path';
+use FindBin;
+
+use lib "$FindBin::RealBin/../lib";
+use Preprocess::DummyH1;
+use Preprocess 'preprocess_chain';
+
+# markupの仕事を円滑にするための前処理を行う。
+# つまり、入力の体裁を整え、事前簡易マークアップを行い、<,dl/>処理を行う。
+#
+# 入力の体裁を整えるとは、
+# Think GNUの原文を規則的にHTML化するために、
+# ところどころ不規則になっていている入力を正すことである。
+#
+# 事前簡易マークアップとは、
+# <pre/>、<tpre/>、<[uod]l/>、<,dl/>で入力の特定の区間を区切る作業である。
+# 簡易なので、<[uod]l/>について、内側に<li/>、<d[td]/>を置くことはない。
+# それはmarkupの仕事である。
+#
+# <,dl/>処理とは、
+# tga08について、最終的に1段ネストした<dl/>を出力しなければならず、
+# markupはそれほど賢くないので、内側の<dl/>をpreprocessの段階で完成させ、
+# それを<,dl/>とすることである。
+# <,/dl>処理の詳細は、Preprocess::tga08を参照のこと。
+#
+# これら前処理は、入力ファイル(名)に大きく依存する。
+# そこでこれらを、Preprocess::入力ファイル名としてモジュール化している。
+# これらのモジュールは実際は、@::PREPROCESS配列の定義になっている。
+# @::PREPROCESSは、ほとんどの場合純粋なパラメタとして書くことができるが、
+# 手続き的な逃げ道も用意されており、実際Preprocess::tga08は、
+# その逃げ道を使っている。
+#
+# なお、markupで言及されている「先行マークアップ」と前処理は、別のものである。
+# 順序としては、先行マークアップの方が後になる。
+
+my $file;
+BEGIN
+{	($file) = @ARGV;
+	$file = abs_path $file;
+	my ($preprocess) = $file =~ m!\A.*/(.*)\z!;
+	"Preprocess::$preprocess"->require;
+}
+
+binmode STDOUT, ':utf8';
+print dummy_h1 $file;
+
+open my $h, '<:utf8', $file;
+our @PREPROCESS;
+(preprocess_chain @PREPROCESS)->($h);

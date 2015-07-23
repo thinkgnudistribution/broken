@@ -1,0 +1,38 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+use strict;
+use warnings;
+use FindBin;
+use lib "$FindBin::RealBin/../lib";
+
+use HtmlPrologue 'html_prologue';
+use Misc 'popen';
+
+# GNUmakefileの下請け。
+
+my $main_title = 'Think GNU Distribution';
+my $dir = $ARGV[0];
+my $sub_title = $dir;
+$sub_title = 'home' unless $sub_title =~ s!\A../!!;
+
+popen my $h, '-|', qw(ls -lgo --time-style=long-iso
+	--ignore=think-gnu-book.tar.gz
+	--ignore=prerequisite
+), $dir;
+print html_prologue "$sub_title | $main_title";
+print "<h1>$sub_title</h1>\n";
+print "<pre>\n";
+print scalar <$h>;
+while (defined (my $line = <$h>)) {
+	next if $line =~ /\sindex\.html$/;
+	$line =~ s/>/&gt;/;
+	$line =~ s!(\S+)$!<a href="$1">$1</a>!;
+	print $line;
+}
+print "</pre></body></html>\n";

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC
+	"-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja">
+<head>
+<link rev="made" href="." />
+<link rel="contents" href="." />
+<script type="text/javascript" src="/www/styles.js"></script>
+<title>Think GNU Distribution</title>
+</head>
+<body>
+	<h1>Think GNU 配布</h1>
+	<address>
+		<a href="mailto:thinkgnudistribution@gmail.com">thinkgnudistribution@gmail.com</a>
+	</address>
+	<h2>概要</h2>
+	<p>
+		<a
+			href="http://ja.wikipedia.org/w/index.php?title=%E7%89%B9%E5%88%A5%3A%E6%96%87%E7%8C%AE%E8%B3%87%E6%96%99&amp;isbn=978-4938704100">シンクグヌー
+			: プロジェクトＧＮＵ日記とソフトウェアの憂鬱</a>(以下、Think
+		GNU)は、1990~1993年のGNUプロジェクトの様子を伝えるもので、日本におけるデジタル配布無制限書籍の草分けでした。
+		実際、原稿のテキストファイルを<a href="#think-gnu-book.tar">アーカイブ</a>したものがダウンロードできる状態にありました。
+		しかし、<a href="orig/copying">配布条件</a>が「変更は認めない」というものであったために、今までこれを HTML
+		化したものが流通することはありませんでした。
+	</p>
+	<p>
+		そこで、このたび<a href="http://x19290.appspot.com/h2.html">私</a>が原著者の承諾を得て、これを <a
+			href="html/tga00.html">HTML 化</a>しました。 マークアップ作業には、場当たり的に書いた<a
+			href="src">プログラム</a>を用いましたが、プログラミング以外の手作業は行っていません。
+	</p>
+	<h2>Think GNU 本文</h2>
+	<ul>
+		<li><a href="html/tga00.html">HTML 版 Think GNU</a></li>
+	</ul>
+	<h2>著作権・配布条件</h2>
+	<ul>
+		<li>この HTML 版 Think GNU の著作権は、引地信之・引地美恵子両氏に属し、その配布条件は<a
+			href="orig">オリジナル</a>と同じです。</li>
+		<li>マークアップに用いたプログラムの著作権は私に属し、配布条件は <a href="src/COPYING">GPLv3</a>
+			が定めるとおりです。</li>
+	</ul>
+	<h2>リリース</h2>
+	<p>
+		この HTML 版 Think GNU の配布は、<a
+			href="https://github.com/x19290/think-gnu-distribution">github</a>で行います。
+	</p>
+	<p>githubの中身は</p>
+	<ul>
+		<li>.htaccess</li>
+		<li>index.html</li>
+		<li>cmp/</li>
+		<li>src/</li>
+	</ul>
+	<p>です。</p>
+	<ul>
+		<li>index.htmlは、今あなたが見ているWebページに相当します。</li>
+		<li>このディレクトリで、&lsquo;<kbd>
+				<a href="#gmake">make</a> --directory=src
+			</kbd>&rsquo;すると、オリジナルの<a href="#think-gnu-book.tar">アーカイブ</a>がダウンロード・展開されたのち、html/
+			ができあがり、そこに一連の HTML ファイルが置かれます。目次となるのは、html/tga00.html です。
+		</li>
+		<li>cmp/に置かれるのは実際は、HTML 版 Think GNU のコピーであり、src/ の回帰テストの際、生成された
+			HTML と比較されます。</li>
+	</ul>
+	<hr />
+	<dl>
+		<dt id="think-gnu-book.tar">アーカイブ</dt>
+		<dd>
+			現在も<a href="ftp://ftp.sra.co.jp/pub/gnu/sra/think-gnu-book.tar.gz">ftp://ftp.sra.co.jp/pub/gnu/sra/think-gnu-book.tar.gz</a>からダウンロードできます。
+		</dd>
+		<dt id="gmake">make</dt>
+		<dd>GNUmake でなければなりません。</dd>
+	</dl>
+	<ul class="br">
+		<li>created: *long ago*</li>
+		<li>updated: $Date: 2015-07-16$</li>
+	</ul>
+	<p><a href="http://www.fsf.org/register_form?referrer=12279"
+	><img width="182" height="45"
+		src="http://static.fsf.org/nosvn/associate/fsf-12279.png"
+		alt="[FSF Associate Member]" /></a>
+	</p>
+</body>
+</html>

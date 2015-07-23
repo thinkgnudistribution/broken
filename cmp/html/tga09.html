@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC
+	"-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja"><head
+><link rev="made" href="./"
+/><link rel="contents" href="./"
+/><title>Think GNU 第 9 回</title></head><body>
+<ul>
+<li><a href="../orig/copying">取り扱い注意</a></li>
+<li><a href="tga10.html">次→</a></li>
+<li><a href="tga08.html">←前</a></li>
+<li><a href="tga00.html">まえがき、目次</a></li>
+<li><a href="../">(HTML版)Think GNU配布</a></li>
+</ul>
+<hr/>
+<h1>Think GNU 第 9 回</h1>
+<h2>□プリンタとフォント□</h2>
+
+<p>CJ No.1/'90.11.18 発売号掲載</p>
+
+
+<h3 id="h.0">0. はじめに</h3>
+
+<p>　異常に暑い夏だったが、台風の到来とともに日増しに秋らしさが深まる今日このごろである。夏休みが終わってコンピュータ業界も活気を取り戻しつつある。</p>
+<p>　NeXT ワークステーションが発売されてから、前評判の時ほど騒がれなくなり、久しく次のカラーNeXT の発表が待ち望まれていた。ようやく Motorola の 68040 を CPU とし、Intel の i860 をグラフィック・プロセッサとして用いたマシンの発表があった。この Intel の i860 はグラフィック・プロセッサとして採用される例が多いが、これは速いためなのか、それとも使い易い、という理由からなのか ? Richard Stallman(rms) が「変わった命令を持っている」と以前言っていた。その NeXT ワークステーションは表示制御コード (プロトコル) に Display PostScript を用いている。GNU ソフトウェアの中で PostScript というキーワードが何箇所かに出てくる。つれづれなるままにご紹介したい。</p>
+
+<h3 id="h.1">1. プリンタ雑感</h3>
+
+<h4>1-1. ライン・プリンタとページ・プリンタ</h4>
+
+<p>　PostScript という言語がある。これはページ記述言語と呼ばれるものの一種で、もともとプリンタ用に開発された。</p>
+<p>　プリンタを出力形式で分類すると、ライン・プリンタかページ・プリンタという種類分けになる。ライン・プリンタが 1 行ずつ印刷する方式に対して、1 ページ分のイメージを作成してからまとめて出力する方式を採っているものをページ・プリンタと呼んでいる。Unix で使うプリンタは特にライン・プリンタかページ・プリンタかの区別はない。</p>
+<p>　プリンタの出力方式と清書システムの関係を Unix を中心にその歴史をさかのぼると次のようになる。</p>
+
+<p>(1). タイプライタ専用の清書システム</p>
+<p>　Unix が開発される以前に roff という清書システムが作られた。nroff、troff、vtroff、ditroff の名前の原型であるとともに、仕様のモデルにもなった。</p>
+
+<p>(2). 特定の清書システムと特定の出力装置</p>
+<ul>
+<li><p>troff と写植機　<a href="#n.a">◆1</a></p>
+<p>　この組み合わせで出力すれば一般の出版されている本と同じ仕上がりが得られる。</p>
+<p>　うろ覚えであるが、ほぼ次のような仕組みになっている。写植機ではフォントをフィルムで用意し、レンズを切り替えることによりフォントの大きさを変化させ、またフォント・フィルムを入れ替えることによりフォントの種類を変化させて、フィルムに焼き付け高解像度の出力を可能にしている。troff は写植機のフォントの幅の表を持っており (つまりそれぞれの文字の幅が違っている)、清書する時のテキストの配置に用いる。</p></li>
+<li><p>nroff とタイプライタ方式のプリンタ</p>
+<p>　計算機からコントロールできるタイプライタで、仕上がりは使用するタイプライタの品質に依存する。一番きれいなものは IBM 製であると言われていた。印字部分がゴルフ・ボールに似ており、さまざまなフォントが用意されていた。印字品質がその人のステータスを表すとまで言われていた (今も言われているかもしれない。契約書は現在でもタイプライタで記入のこと、と指定されているところが多い)。<a href="#n.b">◆2</a></p>
+<p>　IBM タイプライタの対抗機種でバトミントン・プリンタと呼ばれる NEC 製のものがあった。タイプライタの印字幅は全て同一である。</p></li>
+</ul>
+
+<p>(3). 特定の清書システムと特定の出力装置をエミュレートするドライバ</p>
+<p>　例えば、troff と写植機の代わりの出力装置としてバーサテックという CAD 用の静電プリンタを使うようにしたものがある。</p>
+<p>　1975 年当時、写植機の代わりになるプリンタはこれぐらいしかなかった。<a href="#r.a">★1</a>UCB でこの作業を行ない、BSD Unix には troff をこれ用に修正した vtroff<a href="#n.c">*1</a> が入っていた。<a href="#r.b">★2</a></p>
+
+<p>(4). 出力装置に依存しない清書システムと各種出力装置用のドライバ</p>
+<p>　　清書システムを最初から出力装置に依存しないものに仕上げて汎用の中間ファイルにする。それぞれのプリンタに出力するには中間ファイルからプリンタ・コードに変換するフィルタを書けばよい。代表的なものは用意されている (図 1 参照)。</p>
+<p>--- 図 1 ショウリャク ---</p>
+
+<h4>1-2.Unix のライン・プリンタ</h4>
+
+<p>　ライン・プリンタ用の配慮はなされていないが、オフライン・プリントの機能は有している。プリンタ用スプーラ lpr である。オプションを与えて、普通のテキスト・ファイルや、ditroff(Unix の清書プログラム) の出力ファイルの切り替えを行なう。ditroff はテキストの中に清書用のコマンドを挿入する形式のもので、例えば図 2 のような入力ファイルを nroff に与えると図 3 のような出力 (一部を紹介) が得られる。</p>
+
+<p>図 2.nroff/ditroff の入力例</p>
+
+<pre>
+.TH gcc 1&quot;18 June 1989&quot; &quot;Version 1.36&quot;
+.de BP
+.sp
+.ti-.2i
+\(**
+..
+.SH NAME
+gcc\-GNU project C Compiler
+.SH SYNOPSIS
+.B gcc
+[options]files
+.SH WARNING
+This man page is an extract of the documentation of the
+.I GNU C compiler
+and is limited to the meaning of the options.
+It is updated only occasionally,because the GNU project does not use nroff.
+For complete,current documentation,refer to the Info file
+.B gcc
+or the DVI file
+.B gcc.dvi
+which are made from the Texinfo source file
+.BR gcc.texinfo.
+.SH DESCRIPTION
+The
+.I GNU C compiler
+uses a command syntax much like the Unix C compiler.
+The
+.I gcc
+program accepts options and file names as operands.
+Multiple single-letter options may
+</pre>
+
+<p>図 3.nroff の出力例</p>
+
+<p>次のコマンドを実行した結果の一部を示す。</p>
+
+<pre>
+% nroff -man gcc.1 | colcrt
+
+gcc(1)            Unix Programmer's Manual            gcc(1)
+
+
+NAME
+　　gcc-GNU project C　Compiler
+
+SYNOPSIS
+　　gcc[options]files
+
+WARNING
+ 　This man page is an extract of the documentation of the GNU
+　　　　　　　　　　　　　　　　　　　　　　　　　　　　 　---
+　 C compiler and is limited to the meaning of the options. It
+　 - --------
+　 is updated only occasionally,because the GNU project does
+　 not use nroff. For complete,current documentation,refer
+　 to the Info file gcc or the DVI file gcc.dvi which are made
+　 from the Texinfo source file gcc.texinfo.
+
+DESCRIPTION
+ 　The GNU C compiler uses a　command syntax much like the Unix
+           - --------
+ 　C compiler. The gcc program accepts options and file names
+                   ---
+ 　as operands. Multiple single-letter options may
+</pre>
+
+<h3 id="h.2">2.　今月のニュース</h3>
+
+<h4>2-1.GNU ファイル・ユーティリティ (バージョン 1.4)</h4>
+
+<p>　これは文字通りファイルを操作するコマンドで、それぞれが小規模なのでまとめてリリースしている。バージョン 1.3 から 1.4 への更新情報が 9 月 10 日に David J.MacKenzie からニュース・グループ gnu.utils.bug にアナウンスされた。</p>
+
+<dl>
+<dt>●内容</dt>
+<dd>
+<p>　このパッケージには次のプログラムが入っている。</p>
+<p>cat、chmod、cmp、cp、cut、dd、dir、du、head、install、ln、ls、mkdir、mkfifo、mv、paste、rm、rmdir、tac、tail、touch、vdir</p>
+</dd>
+<dt>●特徴</dt>
+<dd>
+<p>バージョン 1.3 との変更点を示す。</p>
+<ul>
+<li><p>roff の man マクロを新たに用意した。</p></li>
+<li><p>新しいプログラムの追加 (cut、paste、touch)</p></li>
+<li><p>POSIX.2 に準拠させる。</p></li>
+<li><p>オプションの追加とバグ修正。</p></li>
+</ul>
+</dd>
+<dt>●入手方法</dt>
+<dd>
+<p>方　法     anonymous ftp</p>
+<p>マシン名   prep.ai.mit.edu(IP アドレスは 18.71.0.38)</p>
+<p>ファイル名 pub/gnu/fileutils-1.4.tar.Z</p>
+</dd>
+<dt>●提案やバグ報告先</dt>
+<dd>
+<p>　電子メールにて bug-gnu-utils@prep.ai.mit.edu へ。</p>
+</dd>
+</dl>
+<h4>2-2. ダイナミック・リンカ / アンリンカ (dld)</h4>
+
+<p>　プロジェクト GNU から配布しているソフトウェアではないが、GNU の一般公的使用許諾 (GNU General Public License、通称 copyleft) に則ったソフトウェアということでカリフォルニア大学ディビス校、W. Wilson Ho から dld のβテスト・リリースのアナウンスが 9 月 10 日にあった。<a href="#n.d">◆3</a></p>
+
+<dl>
+<dt>●内容</dt>
+<dd>
+<p>　これは C 言語で書かれたライブラリ・パッケージで、ダイナミック・リンク / アンリンクを行なうものである。</p>
+</dd>
+<dt>●特徴</dt>
+<dd>
+<p>　この dld を使うと、実行中に別のオブジェクトを新たに追加したり、外すことができる。実行時に次の操作全てが行なえる。</p>
+<ul>
+<li><p>モジュールのロード</p></li>
+<li><p>ライブラリの検索</p></li>
+<li><p>外部参照部分の未決定部分の決定</p></li>
+<li><p>グローバルデータや静的データ領域の確保</p></li>
+</ul>
+</dd>
+<dt>●入手方法</dt>
+<dd>
+<p>　電子メールにて　how@IVY.UCDAVIS.EDU(W. Wilson Ho) へその旨を伝える。</p>
+</dd>
+<dt>●提案やバグ報告先</dt>
+<dd>
+<p>　同じく電子メールにて how@IVY.UCDAVIS.EDU(W. Wilson Ho) へ。</p>
+</dd>
+</dl>
+<h4>2-3.Ghostscript(バージョン 2.0)</h4>
+
+<p>　作成者は Peter Deutsch である。1 つ前のリリース・バージョンは 1.3 であり、今回のリリースまで 1 年あまりを要した。中間のβバージョンとして 1.4β3、4、5、7 があったようだ。次のバージョンは 1.4 になるものとばかり思っていたが、2.0 になった。</p>
+<p>　Karl Berry から Peter Deutsch の代理投稿ということで Ghostscript 2.0 の情報が 9 月 12 日にアナウンスされた。<a href="#n.e">◆4,5</a></p>
+
+<dl>
+<dt>●内容</dt>
+<dd>
+<p>　Ghostscript は、GNU のグラフィック言語である。PostScript 言語とほぼ完全な互換性を持つ。X バージョン 11 をサポートしている (図 4 参照)。Ghostscript には、(PostScript 言語を扱いたくないクライアント・プログラムのために)C 言語の呼び出し可能なグラフィック・ライブラリも入っており、IBM PC や EGA グラフィックを使っている互換の製品もサポートしている。</p>
+</dd>
+<dt>●特徴</dt>
+<dd>
+<ul>
+<li><p>試用フォントではなく実際のフォント (X11 BDF フォントやほかのビットマップ・フォントをベースにしたものと Hershey フォント) を作成して使える。</p></li>
+<li><p>Adobe type 1 フォントを完全にサポート。</p></li>
+<li><p>表示部分のドライバとして、新たに Sun View Window System や Borland グラフィック・インタフェースをサポート。</p></li>
+<li><p>EPSON や HP の DeskJet、LaserJet プリンタをサポート (SONY NEWS 用のビットマップ・レーザプリンタ用のドライバも入っている)。</p></li>
+<li><p>描画結果を 8 あるいは 24 ビット・カラーの pixmap でダンプ可能。</p></li>
+<li><p>1 つの実行形式の中に複数のドライバを含めることができる。</p></li>
+<li><p>複数のディレクトリからライブラリ・ファイルを検索する。</p></li>
+</ul>
+</dd>
+<dt>●入手方法</dt>
+<dd>
+<p>方　法         anonymous ftp</p>
+<p>マシン名       prep.ai.mit.edu(IP アドレスは 18.71.0.38)</p>
+<p>ディレクトリ名 pub/gnu/</p>
+<p>ファイル名     ghostscript-2.0.tar.Z…ソース・プログラム本体</p>
+<p>               ghostscript-2.0fonts.tar.Z…Hershey フォント以外のフォント</p>
+<p>               ghostscript-2.0hershey.tar.Z…Hershey フォント</p>
+<p>               gs_2_0.exe…MS-DOS 用のバイナリ</p>
+</dd>
+<dt>●提案やバグ報告先</dt>
+<dd>
+<p>　電子メールにて bug-ghostscript@prep.ai.mit.edu へ。</p>
+</dd>
+</dl>
+<h3 id="h.3">3. おわりに</h3>
+
+<p>　このあいだ rms から GNU Emacs 18.55.94 のαテストに協力してほしい旨の連絡があった。これは次期バージョン 18.56 用で、単なるバグ修正と IBM の RS/6000 をサポートする、というものである。プロジェクト GNU に IBM の RS/6000 が入ったために可能になったのであろう。今テスト段階なので、それ以外におもだった点があるかどうかは不明である。</p>
+
+<h2>参考文献</h2>
+<dl>
+<dt id="r.a">★1</dt><dd><p
+>　Don Libes &amp;　Sandy Ressler、福崎俊博訳「11.8 デスクトップ・パブリッシング」320 ページ、「Life with UNIX」、アスキー</p>
+</dd>
+<dt id="r.b">★2</dt><dd><p
+>　&quot;vtroff(1)&quot;, UNIX Programmer's Manual, 4.2 Berkeley Software Distribution Virtual VAX-11 Version, August, 1983</p>
+</dd>
+<dt id="r.c">★3</dt><dd><p
+>　&quot;vtroff(1)&quot;, UNIX User's Reference Manual(URM), 4.3 Berkeley Software Distribution Virtual VAX-11 Version, April, 1986</p>
+</dd>
+</dl>
+
+
+<hr/>
+<h2>Think GNU  連載 9 回【脚注】</h2>
+
+<dl>
+<dt id="n.a">◆1</dt><dd><p
+>troff にあるフォントの幅の表とは、フォントの種類と大きさをキーとし、そのフォントの幅が入っているものである。</p>
+</dd>
+<dt id="n.b">◆2</dt><dd><p
+>英文の正式な契約書はタイプライタでタイプするという指定が多いが、日本でもワードプロセッサが普及していなかったひと昔前までは、契約書は和文タイプライタで作成していた。</p>
+</dd>
+<dt id="n.c">*1</dt><dd><p
+>vtroff…BSD Unix にはバーサテック関係のコマンドとして 4.3BSD のマニュアル 3 に次のコマンドが入っている。</p>
+
+<p>vgrind(1)</p>
+<p>プログラム・リストの清書ツールで、ファイルの属性から判断してソース・プログラムの形式 (どのような言語か、シェル・スクリプトか) を決定しキーワード名やコメント部分のフォントを変化させたり、タイトルをつけた troff/vtroff/ditroff 用のファイルを生成する。ソース・プログラムの形式は記述ファイル (/usr/lib/vgrindefs) に書かれており、指定された言語のキーワード、コメントの開始 / 終了などが正規表現で与えられている。</p>
+
+<p>vlp(1)</p>
+<p>vgrind の Lisp に特化したもので Franz Lisp で書かれている。</p>
+
+<p>vp(4)</p>
+<p>静電プリンタ、バーサテックのドライバの記述。</p>
+
+<p>vfont(5)</p>
+<p>バーサテック用のフォント・ファイルのフォーマットである。</p>
+
+<p>　どういうわけか vtroff(1) が 4.3BSD のマニュアルで参照されているが実態 (マニュアル本体) は入っていない。4.2BSD のマニュアル<a href="#r.b">★2</a> には実態も入っている。ただ単に記述ミスなのか、あるいはほかの事情があったのだろうか ?</p>
+</dd>
+<dt id="n.d">◆3</dt><dd><p
+>ここでも GNU General Public License のことを「一般公的使用許諾」と呼んでいたが、現在正式には「一般公有使用許諾」と呼んでいる。</p>
+</dd>
+<dt id="n.e">◆4</dt><dd><p
+>1992 年 7 月現在、Ghost‐script は 2.4.1 に、GNU Emacs は 18.58 にそれぞれバージョン・アップされている。</p>
+</dd>
+<dt id="n.f">◆5</dt><dd><p
+>GNU ファックス・プログラム (NetFax) でも Ghost‐script が使用されている。PostScript コードからファックス・コード (G3) への変換のために用いている。日本のユーザが Ghost‐script の日本語化を行なった。</p>
+</dd>
+</dl>
+<hr/>
+<ul>
+<li><a href="../orig/copying">取り扱い注意</a></li>
+<li><a href="tga10.html">次→</a></li>
+<li><a href="tga08.html">←前</a></li>
+<li><a href="tga00.html">まえがき、目次</a></li>
+<li><a href="../">(HTML版)Think GNU配布</a></li>
+</ul>
+</body></html>

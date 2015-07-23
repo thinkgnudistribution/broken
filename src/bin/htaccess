@@ -1,0 +1,40 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+use strict;
+use warnings;
+
+# GNUmakefileの下請け。
+
+my $text = do {
+	if ($ARGV[0] eq '../.htaccess') {
+		<<'!';
+ForceType "text/plain; charset=UTF-8"
+<Files *.html>
+ForceType "text/html; charset=UTF-8"
+</Files>
+!
+	} elsif ($ARGV[0] eq '../orig/.htaccess') {
+		<<'!';
+AddDefaultCharset Shift_JIS
+<Files copying>
+ForceType text/plain
+</Files>
+<Files readme>
+ForceType text/plain
+</Files>
+<Files *.txt>
+ForceType text/plain
+</Files>
+!
+	} else {
+		die $ARGV[0];
+	}
+};
+
+print $text;

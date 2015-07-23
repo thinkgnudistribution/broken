@@ -1,0 +1,337 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC
+	"-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja"><head
+><link rev="made" href="./"
+/><link rel="contents" href="./"
+/><title>Think GNU　（シンク　グヌー）</title></head><body>
+<ul>
+<li><a href="../orig/copying">取り扱い注意</a></li>
+<li><a href="tga01.html">次→</a></li>
+<li><a href="../">(HTML版)Think GNU配布</a></li>
+</ul>
+<hr/>
+<h1>Think GNU　（シンク　グヌー）</h1>
+<p>--プロジェクト GNU 日記とソフトウェアの憂鬱--</p>
+<p>引地　信之・引地　美恵子編著</p>
+
+<p>株式会社ビレッジセンター</p>
+<hr/>
+
+<h2>■　注　意</h2>
+<p>本文中に出てくる League for Programming Freedom(プログラミング自由連盟、LPF) は、Free Software Foundation(FSF) とは別個の団体です。</p>
+
+<h2>■　商　標</h2>
+<p>Unix オペレーティング・システムは、Unix System Labolatories, Inc.　が開発し、ライセンスしています。X Window System は Massachusetts Institute of Technology の商標です。その他の会社名ならびに商標名は各社の商標または登録商標です。なお、本文では TM や (R) の明記はしていません。</p>
+<hr/>
+
+<h2>□まえがき□</h2>
+
+<p>　本書は、「The C　Users Journal Japan」誌、および「C JOURNAL」誌の連載「Think GNU」と、プロジェクト GNU 関連の情報やプログミング自由連盟 (LPF、League for Programming Freedom) の論文と関連記事を有用な資料として収集し、主に 3 部構成となっている。<a href="#n.a">*1</a> さらに、これらを書いた時期と、まとめた今では、時間が経るうちに変更、新しい状況への対応、またはソフトウェアのバージョン・アップなどが行なわれて、重要な記事内容が変化しているものもある。それらについては、本文は当時のままとし、代わりに傍注を設けたり、あるいは各回の最後に追記するなどして、修正、補足した。時間的に古いものであっても、傍注などによって活力を得ていれば、そして、Richard Stallman を中心とする「プロジェクト GNU」の真価の一端を本書より垣間見ていただければ幸いである。</p>
+<p>　プロジェクト GNU が発足して 8 年になる。GNU ソフトウェアは継続的にバージョン・アップがなされ、さらに新しいソフトウェアも増えている。一方、さまざまなシステムでは、GNU ソフトウェアをシステムとして採用している。いくつか例をあげてみる。</p>
+<p>　GNU コンパイラ・システムを基本システム・ソフトウェアとして NeXT 社が初めて修正、追加ののち採用している (NeXT 社が作業を行なった Objective C 用の GNU C コンパイラのフロントエンドのソース・コードははコピー・フリーとして配布され、最近では最新の GNU C コンパイラに併合されている)。NeXT 社にとっては、開発期間とコストの面において GNU ソフトウェアならではの恩恵を受けている。日本でも、PANIX というパーソナル・コンピュータ PC98 用の OS に GNU コンパイラを採用している。</p>
+<p>　コピー・フリーではあるものの、日常の開発作業やドキュメント作成作業などで使用可能な実用的な OS が発表され始めた。例えば、386 BSD や linux などがある。これらの OS では、コンパイラ・システムやシェル用コマンド群、テキスト操作ユーティリティ群は GNU のものを使用している。</p>
+<p>　Open Software Foundation の OS である OSF/1 でも、GNU コンパイラ・システムをリファレンス・コンパイラとして OSF/1 用に修正、配布している (もちろん、修正されたソース・コードもコピー・フリーとなっている)。</p>
+<p>　配布される GNU ソフトウェアには、プロジェクト GNU としては対象外の DEC 社の VMS にも GNU ソフトウェアが多く移植されており、さらにその他の人々から MS-DOS 用の移植も寄付されている。これらの事実は、GNU ソフトウェアがオープンなソース・コードとその高品質ゆえに、非常に多くの人々に好まれ、使われていることの例であろう。広義の意味で、コンピュータ業界にとって GNU は重要なソフトウェア、欠かせないプロジェクトになりつつあると思う。</p>
+<p>　しかし、GNU ソフトウェアというと「コピー・フリーであるために PDS に似てはいるが、何となく制限があるものらしい」とか「無料で入手や再配布すればそれでいいのではないか」という漠然とした認識しか抱いていない人が多いのではないだろうか ?　技術的な利点はさることながら、自由と協調、互助精神がベースになっているプロジェクト GNU で、GNU ソフトウェアを使ってその精神を広めていこう、という元々の発想が伝わっていないのではないだろうか ? GNU の存在意義とそのゴールとは何なのか、その根底を再認識しつつ、直接説明していくのではなく、間接的な状況証拠、あるいは雰囲気を伝えられればと考え、本書の誕生に至った次第である。もちろん、技術的な優位性をも強調すべく、事あるごとに触れてきたつもりである。</p>
+<p>　第 1 部では、「The C　Users Journal Japan」誌や「C JOURNAL」誌に、1990 年 2 月から 1991 年 3 月までの 13 回にわたって「Think GNU」と題して連載されてきた記事を収め、GNU ソフトウェアのこと、FSF のことなどを書き綴っている。そこでは、1988 年 3 月から 1 年間、GNU プロジェクト内で作業してきた時の話題にも触れている。GNU ソフトウェアの過去を知り、現在なぜこのように広く使われているか、元々のアイデアは何か、なぜそのようなアイデアが発生したのか、どのように成長しているかを、ここから類推していただければと思う。</p>
+<p>　第 2 部のサンフランシスコでの Richard へのインタビュー(「Richard Stallman に聞く (2)「copyleft」は賢いジョークの王様だ」) も興味深い。これを含めて、プロジェクト GNU に関する記事を第 2 部に収めた。基本的で大切な考え方が「GNU 宣言」から汲み取れるはずである。GNU ソフトウェアがさまざまな方面でどのように役立っているかを記述した内容を GNU 情報誌 (「GNU ダイジェスト」) から抜粋した。これらの進行は、GNU ソフトウェアの考え方を拡張した情報を共有するという観点に基づいて構成され、プロジェクトの関連記事も収めた。最近、ICOT(第 5 世代コンピュータ開発機構) で作成されたソフトウェアをフリーとして FTP で配布するようになった。抜粋記事「政府のソフトウェアはフリーにしよう」に呼応しているかのようである。</p>
+<p>　他方では、ソフトウェアをめぐる法律的な問題が最近クローズ・アップされてきている。GNU ソフトウェアとは直接関係ないとはいうものの、フリー・ソフトウェア全般の存亡がかかっており、さまざまな運動が繰り広げられている。その中でプログラミング自由連盟 (LPF) の主張するソフトウェアの法律的な問題を扱った論文の翻訳を第 3 部で採り上げる。潜在的な問題が大きく膨れ上がっている今日では、それが他人ごとではなくなりつつあるのである。特にソフトウェアの特許申請が現実に多数成立し、特許を避けてはプログラミングすることが不可能な時代がやってくるのではないか、という危惧を抱いている。ソフトウェア擁護派は、ソフトウェア技術の開発費用を著作権で保護するよりは、アイデアに関する特許でしか回収できないと考えている。本当にそれが妥当かつ適切なのであろうか ?　ソフトウェア業界の活性を鈍化させ、社会全体の不利益をもたらすのではないだろうか ?　開発費用を特許でしか回収できないからといって、大半が創造的でない技術になっているものを特許化してしまってよいのだろうか ?</p>
+<p>　これらのことは、第 2 部前半の論文を読んで考えていただきたい。米国の現状が基になっているが、将来の日本のソフトウェア産業を含むあらゆる危険性を容易に窺い知ることができると思う。さらに、第 2 部の後半では、関連の話題を、やはり GNU の情報誌 (「GNU ダイジェスト」) より抜粋して載せたので、これも具体例として参考になるだろう。</p>
+<p>　最後に、本書が完成に至るまでにいろいろお世話になった方々に、このページを借りて感謝したい。中村　満氏 (株式会社ビレッジセンター) には本にまとめてはどうか、という発端とサンフランシスコ・インタビューの実現、そしておそらく日本では画期的なことであろう本書自体のコピー・フリー化と電子掲示板へのリリースを快諾していただいた。「The C　Users Journal Japan」誌と「C JOURNAL」誌の「Think GNU」編集担当者、そして本書のまとめにあたり編集及び貴重な意見をくださった担当者にはお世話になった。また、山田正樹君 (株式会社ソニーコンピュータサイエンス研究所)、岸田孝一氏 (株式会社 SRA)、中山　新氏には参考訳の提供を快諾していただいた。もちろん、Richard Stallman(Free Software Foundation) をはじめ、プロジェクト GNU の人々、プログラミング自由連盟の方々にも感謝する。</p>
+<p>　一通り目をとおし、できるだけ正確に、しかも最新情報を反映させるべくペンを入れた。お気づきの点があれば、本書発行元の編集部までお寄せいただきたい。</p>
+
+<p>統合化 GNU システムの早期実現を希望しつつ、</p>
+<p>もう暮れも押し迫った 1992 年 12 月、練馬にて</p>
+
+<p>編著者一同より</p>
+
+<h2>【脚注】</h2>
+
+<dl>
+<dt id="n.a">*1</dt><dd><p
+>GNU と LPF…GNU ソフトウェアを作成しているのがプロジェクト GNU であり、そこのリーダが Richard Stallman である。代表作として、GNU Emacs や GNU C コンパイラなどがある。Free Software Foundation(FSF) は、プロジェクト GNU の作業の支援と GNU ソフトウェアやマニュアルの配布、寄付の受付などを行なっている非営利団体である。　プログラミング自由連盟 (LPF) はプログラムを自由に作成できるようにするために運動している団体で、Richard らによって設立された。現在、ユーザ・インタフェースの著作権とソフトウェア特許に反対している。この 2 つ (FSF と LPF) は全く別個の団体であることに注意してほしい。ただし、フリー・ソフトウェアを開発するプロジェクト GNU にとっては、フリー・ソフトウェアを自由に作成できる自由が絶対に必要であるため、プログラミング自由連盟の活動も非常に重要となっている。</p>
+</dd>
+</dl>
+<hr/>
+<h2>□Think GNU 目次□</h2>
+
+<p>まえがき</p>
+
+<h3>第 1 部 「Think GNU」連載</h3>
+
+<ul>
+<li><a href="tga01.html"
+>第 1 回  A Happy GNU Year!</a><ol>
+	<li><a
+		title="tga01.html/1" href="tga01.html#h.1"
+	>GNU プロジェクトとは</a></li>
+	<li><a
+		title="tga01.html/2" href="tga01.html#h.2"
+	>copyleft の使い方</a></li>
+	<li><a
+		title="tga01.html/3" href="tga01.html#h.3"
+	>今月の話題</a></li>
+	<li><a
+		title="tga01.html/4" href="tga01.html#h.4"
+	>GNU 単語帖「GNU word」</a></li>
+</ol></li>
+<li><a href="tga02.html"
+>第 2 回　1990　ワシントン USENIX 編</a><ol>
+	<li><a
+		title="tga02.html/1" href="tga02.html#h.1"
+	>近況</a></li>
+	<li><a
+		title="tga02.html/2" href="tga02.html#h.2"
+	>並列処理の 2 つの形態</a></li>
+	<li><a
+		title="tga02.html/3" href="tga02.html#h.3"
+	>USENIX</a></li>
+	<li><a
+		title="tga02.html/4" href="tga02.html#h.4"
+	>「GNU ダイジェスト」とは</a></li>
+	<li><a
+		title="tga02.html/5" href="tga02.html#h.5"
+	>今月のニュース「NeXT 社と gcc 編」</a></li>
+	<li><a
+		title="tga02.html/6" href="tga02.html#h.6"
+	>GNU 単語帖「GNU word」</a></li>
+</ol></li>
+<li><a href="tga03.html"
+>第 3 回　ボストン編</a><ol>
+	<li><a
+		title="tga03.html/1" href="tga03.html#h.1"
+	>ボストンという街とその周辺</a></li>
+	<li><a
+		title="tga03.html/2" href="tga03.html#h.2"
+	>MIT キャンパスとプロジェクト GNU</a></li>
+	<li><a
+		title="tga03.html/3" href="tga03.html#h.3"
+	>バージョン管理について</a></li>
+	<li><a
+		title="tga03.html/4" href="tga03.html#h.4"
+	>GNU 作業援助希望リスト</a></li>
+	<li><a
+		title="tga03.html/5" href="tga03.html#h.5"
+	>今月のニュース「Epoch ほか」</a></li>
+</ol></li>
+<li><a href="tga04.html"
+>第 4 回　GNU 史探訪 (1) と GNU コーディング規則</a><ol>
+	<li><a
+		title="tga04.html/1" href="tga04.html#h.1"
+	>GNU 史探訪</a></li>
+	<li><a
+		title="tga04.html/2" href="tga04.html#h.2"
+	>GNU コーディング規則</a></li>
+	<li><a
+		title="tga04.html/3" href="tga04.html#h.3"
+	>今月のニュース</a></li>
+	<li><a
+		title="tga04.html/addendum" href="tga04.html#addendum"
+	>〈補遺〉GNU コーディング規則最新版より</a></li>
+</ol></li>
+<li><a href="tga05.html"
+>第 5 回　GNU 史探訪 (2) と Emacs の周辺</a><ol>
+	<li><a
+		title="tga05.html/1" href="tga05.html#h.1"
+	>GNU 史探訪</a></li>
+	<li><a
+		title="tga05.html/2" href="tga05.html#h.2"
+	>アーカイブ</a></li>
+	<li><a
+		title="tga05.html/3" href="tga05.html#h.3"
+	>今月のニュース</a></li>
+</ol></li>
+<li><a href="tga06.html"
+>第 6 回　カスタマイズのしやすさと圧縮プログラム</a><ol>
+	<li><a
+		title="tga06.html/1" href="tga06.html#h.1"
+	>カスタマイズ、あれこれ</a></li>
+	<li><a
+		title="tga06.html/2" href="tga06.html#h.2"
+	>昔の Emacs 環境</a></li>
+	<li><a
+		title="tga06.html/3" href="tga06.html#h.3"
+	>GNU 史探訪</a></li>
+	<li><a
+		title="tga06.html/4" href="tga06.html#h.4"
+	>アーカイブ・プログラムの周辺</a></li>
+	<li><a
+		title="tga06.html/5" href="tga06.html#h.5"
+	>今月のニュース</a></li>
+	<li><a
+		title="tga06.html/addendum" href="tga06.html#addendum"
+	>〈補遺〉GNU tar のオプション一覧</a></li>
+</ol></li>
+<li><a href="tga07.html"
+>第 7 回　アナハイム USENIX 編</a><ol>
+	<li><a
+		title="tga07.html/1" href="tga07.html#h.1"
+	>アナハイム USENIX にて</a></li>
+	<li><a
+		title="tga07.html/2" href="tga07.html#h.2"
+	>ボストンにて</a></li>
+	<li><a
+		title="tga07.html/3" href="tga07.html#h.3"
+	>今月のニュース</a></li>
+</ol></li>
+<li><a href="tga08.html"
+>第 8 回　続・アナハイム USENIX 編</a><ol>
+	<li><a
+		title="tga08.html/1" href="tga08.html#h.1"
+	>アナハイムにて</a></li>
+	<li><a
+		title="tga08.html/2" href="tga08.html#h.2"
+	>S.C.Johnson と PCC について</a></li>
+	<li><a
+		title="tga08.html/3" href="tga08.html#h.3"
+	>アナハイム USENIX にて</a></li>
+	<li><a
+		title="tga08.html/4" href="tga08.html#h.4"
+	>今月のニュース</a></li>
+</ol></li>
+<li><a href="tga09.html"
+>第 9 回　プリンタとフォント</a><ol>
+	<li><a
+		title="tga09.html/1" href="tga09.html#h.1"
+	>プリンタ雑感</a></li>
+	<li><a
+		title="tga09.html/2" href="tga09.html#h.2"
+	>今月のニュース</a></li>
+</ol></li>
+<li><a href="tga10.html"
+>第 10 回　開発中の GNU ソフトウェア</a><ol>
+	<li><a
+		title="tga10.html/1" href="tga10.html#h.1"
+	>テレビあれこれ</a></li>
+	<li><a
+		title="tga10.html/2" href="tga10.html#h.2"
+	>開発中の GNU ソフトウェア</a></li>
+	<li><a
+		title="tga10.html/3" href="tga10.html#h.3"
+	>Mach マイクロカーネルの現状</a></li>
+	<li><a
+		title="tga10.html/4" href="tga10.html#h.4"
+	>今月のニュース</a></li>
+</ol></li>
+<li><a href="tga11.html"
+>第 11 回　gcc の生成コードの調査</a><ol>
+	<li><a
+		title="tga11.html/1" href="tga11.html#h.1"
+	>標準化</a></li>
+	<li><a
+		title="tga11.html/2" href="tga11.html#h.2"
+	>北京料理</a></li>
+	<li><a
+		title="tga11.html/3" href="tga11.html#h.3"
+	>サイン入り本と Happy Hacking</a></li>
+	<li><a
+		title="tga11.html/4" href="tga11.html#h.4"
+	>gcc で組み合わせ命令を生成させる</a></li>
+	<li><a
+		title="tga11.html/5" href="tga11.html#h.5"
+	>今月のニュース</a></li>
+	<li><a
+		title="tga11.html/addendum" href="tga11.html#addendum"
+	>〈補遺〉gcc が生成する命令、その後</a></li>
+</ol></li>
+<li><a href="tga12.html"
+>第 12 回　近未来のパーソナル・コンピュータ</a><ol>
+	<li><a
+		title="tga12.html/1" href="tga12.html#h.1"
+	>パーソナル・コンピュータ</a></li>
+	<li><a
+		title="tga12.html/2" href="tga12.html#h.2"
+	>今月のニュース</a></li>
+</ol></li>
+<li><a href="tga13.html"
+>第 13 回　番外　ダラス USENIX 編</a><ol>
+	<li><a
+		title="tga13.html/1" href="tga13.html#h.1"
+	>USENIX</a></li>
+	<li><a
+		title="tga13.html/2" href="tga13.html#h.2"
+	>プロジェクト GNU の作業項目</a></li>
+	<li><a
+		title="tga13.html/3" href="tga13.html#h.3"
+	>今月のニュース</a></li>
+</ol></li>
+</ul>
+
+
+<h3>第 2 部　GNU ソフトウェアの関連記事</h3>
+
+<ul>
+	<li><a href="tgb01.html#h.0"
+	>GNU 宣言</a></li>
+	<li><a href="tgb02.html#h.0"
+	>インタビュー(1)「GNU は Unix ではない」</a></li>
+	<li><a href="tgb03.html#h.0"
+	>インタビュー(2)「「copyleft」は賢いジョークの王様だ」</a></li>
+	<li><a href="tgb04.html#h.0"
+	>GCC における BSD Unix の移植</a></li>
+	<li><a href="tgb04.html#h.1"
+	>オンライン・ブック・イニシアチブ</a></li>
+	<li><a href="tgb04.html#h.2"
+	>Common Knowledge の汎用索引</a></li>
+	<li><a href="tgb04.html#h.3"
+	>グーテンベルク・プロジェクト</a></li>
+	<li><a href="tgb04.html#h.4"
+	>政府のソフトウェアはフリーにしよう</a></li>
+	<li><a href="tgb04.html#h.5"
+	>GNU は小さな科学を大規模に援助している</a></li>
+	<li><a href="tgb04.html#h.6"
+	>GNU は大きな科学も支援している</a></li>
+</ul>
+
+
+<h3>第 3 部　プログラミング自由連盟の関連論文と記事</h3>
+
+<ul>
+	<li><a href="tgc01.html#h.0"
+	>ソフトウェアの特許に反対しよう</a></li>
+	<li><a href="tgc02.html#h.0"
+	>ユーザ・インタフェースの著作権に反対しよう</a></li>
+	<li><a href="tgc03.html#h.0"
+	>なぜ特許はソフトウェアに有害なのか</a></li>
+	<li><a href="tgc04.html#h.0"
+	>プログラム作成のために自分自身の自由を保護せよ</a></li>
+	<li><a href="tgc04.html#h.1"
+	>AT&amp;T は X Window のユーザに脅威を与えている</a></li>
+	<li><a href="tgc04.html#h.2"
+	>著作権で保護されたプログラミング言語</a></li>
+	<li><a href="tgc04.html#h.3"
+	>ジョン・フォン・ノイマンが特許に反対していた</a></li>
+</ul>
+
+
+<p>付　録</p>
+
+<ul>
+	<li><a href="tgd01.html#h.0"
+	>現在配布可能な GNU ソフトウェア</a></li>
+	<li><a href="tgd02.html#h.0"
+	>GNU ソフトウェアのメーリング・リストの紹介</a></li>
+	<li><a href="tgd03.html#h.0"
+	>GNU ライセンス</a></li>
+</ul>
+
+<ul>
+	<li><a href="tgd03.html#h.1"
+	>GNU GENERAL PUBLIC LICENSE Version 2</a></li>
+	<li><a href="tgd03.html#h.2"
+	>GNU LIBRARY GENERAL PUBLIC LICENSE Version 2</a></li>
+	<li><a href="tgd03.html#h.3"
+	>GNU 一般公有使用許諾書　1989 年 2 月、バージョン 1(参考)</a></li>
+</ul>
+
+<p><a href="tgd04.html#h.0">あとがき</a></p>
+<p><a href="tgd04.html#h.1">初出一覧</a></p>
+<hr/>
+<ul>
+<li><a href="../orig/copying">取り扱い注意</a></li>
+<li><a href="tga01.html">次→</a></li>
+<li><a href="../">(HTML版)Think GNU配布</a></li>
+</ul>
+</body></html>

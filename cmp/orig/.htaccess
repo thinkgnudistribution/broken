@@ -1,0 +1,10 @@
+AddDefaultCharset Shift_JIS
+<Files copying>
+ForceType text/plain
+</Files>
+<Files readme>
+ForceType text/plain
+</Files>
+<Files *.txt>
+ForceType text/plain
+</Files>

@@ -1,0 +1,64 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+use strict;
+use warnings;
+use Fatal 'open';
+
+# GNUmakefileの下請け。
+# パラメタ(ファイル名。複数可)と、それが依存しているモジュールをprintする。
+
+BEGIN { @ARGV or exit; }
+
+use English qw($OUTPUT_FIELD_SEPARATOR $OUTPUT_RECORD_SEPARATOR);
+use FindBin;
+use lib "$FindBin::RealBin/../lib";
+
+my %seen;
+my @seen;
+sub recurse($);
+
+my %system_modules = (
+	Cwd => 1,
+	Encode => 1,
+	'Encode::Guess' => 1,
+	English => 1,
+	Fatal => 1,
+	FindBin => 1,
+	'Params::Validate' => 1,
+	'UNIVERSAL::require' => 1,
+);
+
+foreach my $top (@ARGV) {
+	recurse $top;
+}
+my $this = __FILE__;
+push @seen, $this unless $seen{$this};
+local $OUTPUT_FIELD_SEPARATOR = local $OUTPUT_RECORD_SEPARATOR = "\n";
+print @seen;
+
+sub recurse($)
+{
+	my ($file) = @_;
+	return if $seen{$file};
+	$seen{$file} = 1;
+	push @seen, $file;
+
+	open my $in, '<', $file;
+
+	while (defined (my $module_candidate = <$in>)) {
+		next unless $module_candidate =~ s{
+			\A use \s+ ([A-Z] [^\s;]*) .* \z
+		}/$1/xs;
+		next if exists $system_modules{$module_candidate};
+		$module_candidate =~ s!::!/!g;
+		my $module = "lib/$module_candidate.pm";
+		die $module unless -e $module;
+		recurse $module;
+	}
+}

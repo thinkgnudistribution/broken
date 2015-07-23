@@ -1,0 +1,964 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC
+	"-//W3C//DTD XHTML 1.1//EN"
+	"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd"
+><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ja"><head
+><link rev="made" href="./"
+/><link rel="contents" href="./"
+/><title>Think GNU 第 11 回</title></head><body>
+<ul>
+<li><a href="../orig/copying">取り扱い注意</a></li>
+<li><a href="tga12.html">次→</a></li>
+<li><a href="tga10.html">←前</a></li>
+<li><a href="tga00.html">まえがき、目次</a></li>
+<li><a href="../">(HTML版)Think GNU配布</a></li>
+</ul>
+<hr/>
+<h1>Think GNU 第 11 回</h1>
+<h2>□gcc の生成コードの調査□</h2>
+
+<p>CJ No.3/'91.1.18 発売号掲載</p>
+
+
+<h3 id="h.0">0. はじめに</h3>
+
+<p>　プロジェクト GNU では、長期にわたって待たれていた GNU カーネルの作業に着手した。その報告を行なう。GNU ソフトウェアの中で POSIX という規格に従って作っているコマンドがいくつかある。その POSIX の概要を少しと gcc のオブジェクト・コードの良さを調べるために簡単な実験を通じて説明する。</p>
+
+<h3 id="h.1">1. 標準化</h3>
+
+<p>　最近 Unix の世界では標準がはやりである。UI(Unix International) と OSF(Open Software Foundation) は標準を設定するとともに実際のソフトウェアも作っている。一方、X/Open や Uniforum、IEEE(POSIX) では標準を設定しつつも実際にものは作っていない。その他に、ウィンドウ関係などを含めると多くの標準や標準設定団体がある。ここで標準設定団体ができると、またかということになる。これだけの標準化団体があると、それらを調査し提言を行なう別の団体も出てくる。あるいは標準化動向を調査して報告することを仕事とする人も出てくる。もうこうなると、これ以上標準を増やさないで、と言いたくなってしまうのは私だけではないだろう。しかし、世の中にはたくさんあるから標準化は好きなのだ<a href="#r.a">★1</a>、と言っている人もいる。</p>
+<p>　POSIX は POSE+Unix であり、POSE は Portable Operating System Environment の略で米国の IEEE(Institute of Electrical and Electronics Engineers) が策定している。POSIX の中でもいくつか種類<a href="#r.b">★2</a> があり、IEEE POSIX 1003.1 が既に完成している。見直しも継続して行なわれている。標準化の世界では Unix のそれに劣らず内部でしか通用しない言葉や数字あるいは省略系が多用されている。この 1003.1 もそうである。1003.1 は OS とのインタフェースを、1003.0 が POSIX 全体のガイドラインを、1003.2 がシェルとユーティリティを、といったふうに分担されている。完成前のレビュー段階のもののドラフトには番号がついている。レビューが済むと、この番号も増えていく。その他にリアルタイム・カーネルやネットワークなどもある。</p>
+<p>　POSIX という名前は最初からついていたわけではない。最初は IEEEIX という名前であった。1986 年のことで、そのドラフトは　最初のテスト的な生成物で P1003.1 Trial Use Standard と呼ばれていた。しかし、あまりにも言いにくいためほかの良い名前を探していた。Richard M. Stallman も IEEEIX と呼ばれていたころから実際の設定作業のオブザーバとしていくつかの分科会にコメントを出していた。Richard がこの名前の件を聞いて「Portable Operation System Interface だろ、そして名前は IEEEIX」「それなら POS と ix だから POSIX がいいんじゃないの」といった言葉が交わされたのだろう。POSIX という名前は Richard がつけたらしい。これは 4.3BSD の内部動作についての本<a href="#r.c">★3</a> を書いた John Quarterman から聞いた話である。</p>
+<p>　John Quarterman とは先日北京で一緒になった。彼は日本に来る途中に中国の会議 「PortSoft」に寄ったのである。その会議には日本から 5 名が参加した。PortSoft というのは、グループ形式であって正式な団体という構成をとっていないが、Unix(とその周辺) の国際語化について、アジアの人々が集まって話し合おうというものである。第 1 回の東京ミーティングに引き続き今回の北京での開催は 2 回目である。この国際語化でも i18n という省略形が出てくる。これは国際語化のことで、英語で言うところの internationalization の最初 (i) と最後 (n) の文字をとり、その間に 18 文字 (nternationalizatio) を省略した単語という意味から来ている。国際語化に関する移植ガイドを作成したり、i18n に関する標準化団体に提案やコメントを出せないだろうか、といったことなどを検討している。<a href="#n.a">◆1</a></p>
+<p>そこに今回 John Quarterman はオブザーバとして参加したのである。ちなみに次回は香港で開催の予定である。</p>
+<p>　標準化は個人的には興味がない。しかし、GNU ソフトウェアの中で POSIX に沿ったものになっている、あるいはしようとしているものがいくつかあるのでそれをフォローするために必要になる。bash(GNU 版シェル)、ファイル・ユーティリティ、find(ファイル探索プログラム、「今月のニュース」参照)、それに現在テスト中の libc(C 言語のライブラリ) である。POSIX をフォローしている一番大きな理由は、GNU ソフトウェアの日本語化を進めていく場合、あるいはプロジェクト GNU に要求していく場合に、POSIX に従った国際語化を進める上でのプラットホームとして使用できるからである。</p>
+
+<h3 id="h.2">2. 北京料理</h3>
+
+<p>　北京に行って中華料理、特に北京ダックをいっぱい食べてきた。4 泊 5 日の出張であったが、4 回も食べた。日本では 1 回ぐらい食べたような記憶があるがよく覚えていないので、北京で食べるのが最初ということにしてもまあ間違いにはならないだろう。</p>
+<p>　北京ダックはたいてい最後に出てくる。青菜とタレ、ちょっと堅めのパンのようなもの、あるいはサンドイッチ用の丸いマフィンみたいなパンに似たものが出てくる。これは次に北京ダックが出てくるというサインである。Unix 仲間の間ではこれは「シグナル」だろう、ということで衆議一決した。北京ダック (細切りのもの) が出てくるとそれを青菜と一緒にしてタレをつけて、さっきのパンの間にはさんで食べるのである。なかなかおいしい。そのパンだけ食べてもなかなかいける。「香港レストラン」という名前の北京ダック専門のレストランのものがおいしかった。</p>
+<p>　一番びっくりした食べ物は、何といってもサソリの唐揚げである。これも青菜と一緒に出てきた。さすがに人の食べるのをたまげて見ているのみであった。癌の予防効果があるそうだ。</p>
+<p>　泊まった場所は米国にもよくあるようなタイプのホテルであった。北京のホテルにもランク付けがされていて最高は 5 つ星で、泊まったホテルは北京で 2 番目にランキングされているホテルだそうである。朝食はバイキング・スタイルであったが、ご当地の中華料理もあったので、毎朝おかゆを食べていた。</p>
+
+<h3 id="h.3">3. サイン入り本と Happy Hacking</h3>
+
+<p>　北京に行く前から John Quarterman が来ることは伝え聞いていたので、著書<a href="#r.c">★3</a> を持って行ってサインしてもらうかと思っていた。しかし荷物になるのでやめた。持って行こうとした本は以前 USENIX に参加した時に購入したもので、4.3BSD のチュートリアル・セミナーを受けた時、最後に講師の 1 人の McKusick にサインをもらったものである。彼が日本に来た時にサインしてもらおうと家に置いてあった本をたまたまその日に会社に持って行ったら、ちょうど彼が会社に来ていた。運が良かった。早速サインしてもらうべくお願いした。彼は快く引き受けてくれた。終わってから今度は彼が自分の 4.3BSD の本を差し出して適当なページにサインしてほしい、とのこと。その本は読者がサインする本であった。なるほどと思った。さらに自分の書いた別な本も取り出し、それにもサインしてほしい、と言われた。でもその本は読んだことがない、と答えると、じゃどこでもいいから 1 ページ読んでそこにサインしてほしい、と頼まれた。1 ページでも読めば読者ということなのだろう。適当な部分を 1 ページ読んでサインをした。</p>
+<p>　この 2 つのサインはそれだけじゃ面白くないので「Happy Hacking」という言葉を付け加えた。これは自分で考えたのではなく、Richard Stallman の受け売りである。楽しくハックして !　ハックを楽しんで !　というくらいの意味であろう。さらに付け加えるならば、ハックするというのはハッカーと同じく悪い意味ではない。コンピュータのソフトウェアを使って仕事をするのではなく、使うこと自体に意義や喜びを見出して楽しくプログラム作りやシステムの調査を行なう、といった意味である。もともとの意味はこれだろうが日常会話で使うとすると、「頑張って」ぐらいの言葉になる。昔次のような場面でこの言葉を聞いた。計算機に向かって仕事をしていると、夕方になってそこに Richard がやって来て「おいしい中華に興味がない ?」と誘われた。ちょっと忙しかったので「また今度行きましょう」と答えると、Richard が作業場からエレベータ・ホールへ出る時に「Happy Hacking」と言って去って行った。GNU Emacs のマニュアルにサインする時も Richard は自分のサインと共に「Happy Hacking」と書いた。</p>
+
+<h3 id="h.4">4.gcc で組み合わせ命令を生成させる</h3>
+
+<p>　GNU C コンパイラ (GNU C　Compiler、gcc) の移植を始めたころ、生成されるオブジェクト・コードを調べたことがあった。移植対象のマシンは CPU に Motorola 社の 68020 を使っていた。68020 には DBcc という組み合わせ命令<a href="#r.d">★4</a> が用意されている。この命令を gcc で生成することができないか、あるいは生成するためにはどのような C のソース・プログラムを書けばいいか、試したことがある。ここにその概略を示す。これを見て gcc に関心を抱いてくれる人が増えれば幸いである。<a href="#n.b">◆2</a></p>
+
+<h4>4-1.dbra 命令</h4>
+
+<p>　68020 の DBcc という命令は「cc で与えられる条件を調べて、成立していなければデータ・レジスタを 1 減らし、次にそのデータ・レジスタの内容が-1 でなければジャンプする」(つまり cc にさまざまな条件を示すニュモニックが入る) 操作を行なう。この汎用命令を gcc でそのまま生成させることは難しいので、少し的を絞って DBcc の中の 1 つの命令 DBF に挑戦する。これは「データ・レジスタの内容を 1 減らし、その結果が-1 でなければジャンプする」という簡単な命令になる。gas(GNU Assembler) で採用している Motorola 社の 68000 系の MIT 式シンタックスで表すと dbra(あるいは dbf) という表記になる。gcc は 32 ビットを int として想定している (もちろん変更できるが)。一方、DBcc は、16 ビット演算命令であるので int を直接マップできない。</p>
+<p>　列の各要素の合計をとるプログラムをテストに用いる (リスト 1 参照)。</p>
+
+<p>リスト 1. test1.c</p>
+
+<pre>
+　　　/*
+　 　　normal version
+　　　*/
+　　　#define MAX 10000
+
+　　　main ()
+　　　{
+　　　int a[MAX];
+　　　int t;
+　　　int i;
+
+　　　for (i = 0; i &lt;= MAX; i++)
+　　　　a[i] =　i;
+
+　　　for (i = 0; i &lt;= 1000; i++)
+　　　　func (a, MAX);
+
+　　　printf (&quot;total = %d\n&quot; , func (a, MAX));
+　　　}
+
+　　　int
+　　　func (a, size)
+　　　 　　int a[];
+　　　 　　short size;
+　　　{
+　　　short i;
+　　　int t;
+
+　　　t =　0;
+　　　for (i = 0; i &lt; size; i++)
+　　　　t += a[i];
+
+　　　return t;
+　　　}
+</pre>
+
+<h4>4-2.gcc のマシン記述ファイル</h4>
+
+<p>　このコラムでも以前触れたように、gcc の構成の中でターゲット・マシンに依存するファイル<a href="#r.e">★5</a> は、C 言語で記述されたファイルと、命令の意味を記述しているマシン記述ファイル (MD、machine description file) である。MD に命令を登録しておけばその命令を生成できる可能性がある、ということである。Motorola 社の 68000 系 (m68k) の MD ファイルは config/m68k.md なので、そこから dbra あるいは dbf を探してみる。DBcc 系の中で dbf だけをサポートしていることがわかる。dbra という命令を生成しているエントリをリスト 2 に示す。奥が深いが、必要な部分のみの概略を説明する。</p>
+
+<p>リスト 2. m68k の MD dbra のエントリ</p>
+
+<pre>
+(define_insn &quot;&quot;
+　[(set (pc)
+ (if_then_else
+　(ne (compare (plus:HI (match_operand:HI 0 &quot;general_operand&quot; &quot;g&quot;)
+　　　　　　　　　　　　(const_int -1))
+　 　　　　　　(const_int -1))
+　　　(const_int 0))
+　(label_ref (match_operand 1 &quot;&quot; &quot;&quot;))
+　(pc)))
+　 (set (match_dup 0)
+ (plus:HI (match_dup 0)
+　　　　　(const_int -1)))]
+　&quot;&quot;
+　&quot;*
+{
+　CC_STATUS_INIT;
+　if (DATA_REG_P (operands[0]))
+　　return \&quot;dbra %0,%l1\&quot;;
+　if (GET_CODE (operands[0]) == MEM)
+　　{
+#ifdef MOTOROLA
+#ifdef NO_ADDSUB_Q
+　  　return \&quot;sub%.w %#1,%0\;jbcc %l1\&quot;;
+#else
+　　 return \&quot;subq%.w %#1,%0\;jbcc %l1\&quot;;
+#endif
+#else /* not MOTOROLA */
+　　 return \&quot;subqw %#1,%0\;jcc %l1\&quot;;
+#endif
+　　}
+#ifdef MOTOROLA
+#ifdef HPUX_ASM
+#ifndef NO_ADDSUB_Q
+　return \&quot;sub%.w %#1,%0\;cmp%.w %0,%#-1\;jbne %l1\&quot;;
+#else
+　return \&quot;subq%.w %#1,%0\;cmp%.w %0,%#-1\;jbne %l1\&quot;;
+#endif
+#else /* not HPUX_ASM */
+　return \&quot;subq%.w %#1,%0\;cmp%.w %#-1,%0\;jbne %l1\&quot;;
+#endif
+#else /* not MOTOROLA */
+　return \&quot;subqw %#1,%0\;cmpw %#-1,%0\;jne %l1\&quot;;
+#endif
+}&quot;)
+</pre>
+
+<p>　MD は複数のエントリから成り、それぞれのエントリはある操作を行なうにはどのような命令列が必要かをさまざまな制限とともに列挙されている。操作の記述は Lisp ライクな専用の言語 (RTL 言語、Register Transfer Language) を使う。この言語は gcc の各フェーズの中間言語でもある。命令列の定義は C 言語で記述する。その後に条件式を与える。例えば、コンパイラの特定のオプションが与えられた場合のみ、そのエントリを有効にするような条件を記述することができる。</p>
+
+<p>(define_insn &quot;RTL 仮想機械の命令 &quot;</p>
+<p>[操作の意味を RTL で記述したもの、RTL テンプレート]</p>
+<p>&quot;最終条件 (C 言語の式)&quot;</p>
+<p>&quot;*</p>
+<p>{</p>
+<p>     生成コード、出力テンプレート (C 言語)</p>
+<p>}&quot;)</p>
+
+<p>　生成コードの中では、同じアーキテクチャのマシンであるがアセンブラの文法が違う場合を C 言語のプリプロセッサ (cpp)#ifdef で吸収している。リスト 2 では MOTOROLA や HPUX_ASM などの cpp シンボルが使われている。m68k 系の Unix アセンブラのアセンブラ文法には、Motorola が定義しているものと MIT で定義したものの 2 種類がある。Motorola 文法の場合は MOTOROLA という cpp シンボルが定義されている。HPUX_ASM という cpp シンボルは HP の Unix(HPUX) のアセンブラを使う場合の違いを吸収している。</p>
+<p>　リスト 2 では RTL 仮想機械の命令のフィールドは空文字列になっている。RTL 生成部で用いられている仮想機械の命令を書けば、そのエントリの定義を使った中間コードを生成する。RTL テンプレートの意味は、</p>
+
+<p>「ある RTL で書かれた式、RTX(RTL Expression) のオペランド 0(データ・タイプはこの例では HI で 16 ビット short) で汎用レジスタの必要がある。オペランド 0 と-1 をデータ・タイプ HI で加算し、0 と比較し、内容が異なっていればプログラム・カウンタ (pc) をオペコード 1 で与えられるラベルの内容にする。そうでなければ次の実行命令のアドレスにする。つまり、汎用レジスタ・オペランド 0 から 1 引いて-1 でない場合は、オペランド 1 で与えられるラベルへジャンプする。以上の操作と並行してオペランド 0 の内容を 1 減らす」</p>
+
+<p>となる。C 言語に似た疑似言語でわかりやすく表現するとこのようになる (ここで stmt1,stmt2 という構文は、stmt1 と stmt2 を同時に実行する、という意味である)。</p>
+
+<pre>
+　　rtx(p0, p1)
+        short p0;
+        label p1;
+　　 {
+　　 　{
+　　 　　if ((p0 + (-1)) != 0)
+　　　　　　{
+　　 　　　　　goto p1;
+　　　　　  }
+　　　　 else goto next;
+　　　 },p0--;
+　 　}
+</pre>
+
+<h4>4-3.dbra 命令を生成している例</h4>
+
+<p>　このエントリを生かすよう C のソース・コードへ test1.c を変更した。それがリスト 3 である。func という関数に対応する gcc(コマンド・オプションなし) で作成したアセンブラ・コードをリスト 4 に示す。L9 の movew a6@(-2),d0 は a6 レジスタの内容から 2 引いた番地の 16 ビットの内容を d0 に入れる、という意味である。extl は符合拡張命令、asll は算術演算シフト命令である。ここで dbra 命令は生成していない。</p>
+
+<p>リスト 3. test2.c</p>
+
+<pre>
+　　 /*
+         dbra version
+      */
+　　 /*
+</pre>
+
+<p>　　　* main() はリスト 1 test1.c のものと同じ。</p>
+
+<pre>
+　　　*/
+
+ 　　int
+ 　　func (a, size)
+ 　 　　　int a[];
+ 　 　　　short size;
+ 　　{
+ 　　　short i;
+ 　　　int t;
+
+ 　　　i = size - 1;
+ 　　　t = 0;
+ 　　　do
+ 　　　　{
+  　　　 　t += a[i];
+　 　　　}
+　 　　while (--i !=  -1);
+
+　 　　return t;
+　 　}
+</pre>
+
+<p>リスト 4. test2.c、関数 func に対応するコード</p>
+
+<pre>
+.globl _func
+_func:
+              link a6,#-8
+              movew a6@(14),a6@(14)
+              movew a6@(14),d1
+              addw #65535,d1
+              movew d1,a6@(-2)
+              clrl a6@(-8)
+</pre>
+
+<p>L9:                                  | ループの入口</p>
+
+<pre>
+              movew a6@(-2),d0
+              extl d0
+              asll #2,d0
+              movel a6@(8),a0
+              movel a0@(d0:l),d1
+              addl d1,a6@(-8)
+L11:
+              subqw  #1,a6@(-2)
+              cmpw #-1,a6@(-2)
+              jeq L10
+</pre>
+
+<p>              jra L9                 | ループの最後</p>
+
+<pre>
+L10:
+              movel a6@(-8),d0
+              jra L8
+L8:
+              unlk a6
+              rts
+</pre>
+
+<p>　最適化オプションを与えてコンパイルしたオブジェクトがリスト 5 である。func の本体が非常に短く、dbra 命令が生成されている。比較のために普通にコーディングした test1.c を、最適化オプション付きの gcc コンパイルした結果がリスト 6 である。最適化が効いているが、リスト 5 ほど短いコードではない。</p>
+
+<p>リスト 5. test2.c に対応するコード (最適化オプション付き)</p>
+
+<pre>
+#NO_APP
+gcc_compiled.:
+.text
+LC0:
+             .ascii &quot;total = %d\12\0&quot;
+             .align 1
+.globl _main
+_main:
+             link a6,#-40000
+             moveml #0xc00,sp@-
+             clrl d4
+L5:
+             lea a6@(d4:l:4),a0
+             addl #-40000,a0
+             movel d4,a0@
+             addql #1,d4
+             cmpl #10000,d4
+             jle L5
+             clrl d4
+             movel a6,d5
+             addl #-40000,d5
+L9:
+             pea 10000:w
+             movel d5,sp@-
+             jbsr _func
+             addqw #8,sp
+             addql #1,d4
+             cmpl #1000,d4
+             jle L9
+             pea 10000:w
+             movel a6,d1
+             addl #-40000,d1
+             movel d1,sp@-
+</pre>
+
+<p>             jbsr _func              | 関数呼び出し</p>
+
+<pre>
+             movel d0,sp@-
+             pea LC0
+             jbsr _printf
+             movel #-40000,a0
+             moveml a6@(-8,a0:l),#0x30
+             unlk a6
+             rts
+             .align 1
+.globl _func
+_func:
+             link a6,#0
+             movel a6@(8),a0
+             movew a6@(14),d0
+             addw #65535,d0
+             clrl d1
+</pre>
+
+<p>L11:                                 | ループの入口</p>
+<p>             addl a0@(d0:w:4),d1</p>
+<p>             dbra d0,L11             | ループの最後</p>
+
+<pre>
+             movel d1,d0
+             unlk a6
+             rts
+</pre>
+
+<p>リスト 6. test1.c の関数 func に対応するコード (最適化オプション付き)</p>
+
+<pre>
+.globl _func
+_func:
+            link a6,#0
+            movel a6@(8),a0
+            movew a6@(14),d2
+            clrl d1
+            clrw d0
+</pre>
+
+<p>            cmpw d0,d2              | ループの入口</p>
+
+<pre>
+            jle L15
+L14:
+            addl a0@(d0:w:4),d1
+            addqw #1,d0
+            cmpw d0,d2
+</pre>
+
+<p>            jgt L14                 |ループの最後</p>
+
+<pre>
+L15:
+            movel d1,d0
+            unlk a6
+            rts
+</pre>
+
+<h4>4-4. インライン展開</h4>
+
+<p>　gcc の生成コードの中で面白いものは関数のインライン展開である。関数のインライン展開を行なう条件の概略は、</p>
+
+<p>　(0)　呼び出し側と定義側が、同一ファイル内にある。</p>
+<p>　(1)　インライン展開できる程度に簡単な定義。</p>
+<p>　(2)　さらに自分自身を呼び出していない。</p>
+<p>　(3)　その関数が static 宣言されている。</p>
+<p>　(4)　呼び出し位置が関数定義より後ろに位置している。</p>
+
+<p>である。古い gcc では (3) の制限があったが最近のものはこの制限が外された。ちなみに static 宣言されない関数のインライン展開は、当然呼び出し側で展開され、さらにその関数自体のコードも生成する。</p>
+<p>　前述のソース・コードを gcc でインライン展開させるためには、関数の定義位置を変更すればいい。つまり、func の関数定義を main の関数定義より前に持っていけばいい。test1.c と test2.c でこの操作を施したものをそれぞれ test3.c、test4.c とする。gcc のオプションは -O -finline-functions である。参考までに、リスト 7 に test4.c の func の関数定義部分の定義クラスを static にしたソース・ファイルをこのオプションでコンパイルしたコードを示す。</p>
+
+<p>リスト 7.　インライン展開した例</p>
+
+<pre>
+#NO_APP
+gcc_compiled.:
+.text
+LC0:
+             .ascii &quot;total =　%d\12\0&quot;
+             .align 1
+.globl _main
+_main:
+             link a6,#-40000
+             clrl d1
+L30:
+             lea a6@(d1:l:4),a0
+             addl #-40000,a0
+             movel d1,a0@
+             addql #1,d1
+             cmpl #10000,d1
+             jle L30
+             clrl d1
+L38:
+             movew #9999,d0         |(a)
+L35:
+             dbra d0,L35            | &lt;---　??
+             addql #1,d1
+             cmpl #1000,d1
+             jle L38                |(b)
+             movel #-40000,a0
+             addl a6,a0
+             movew #9999,d0
+             clrl d1
+L40:
+</pre>
+
+<p>             addl a0@(d0:w:4),d1    | func のループの入口</p>
+<p>             dbra d0,L40            | func のループの出口</p>
+
+<pre>
+             movel d1,sp@-
+             pea LC0
+             jbsr _printf
+             unlk a6
+             rts
+</pre>
+
+<p>　以上、作成した test1.c、test2.c、test3.c、test4.c を gcc でコンパイルした場合の実行時間を表 1 にまとめておく。</p>
+
+<p>表 1.　実行時間　CPU time(秒)</p>
+<p>(SONY NEWS 1850 16M バイト・メインメモリ /NEWS-OS Release3.3 を使用)</p>
+<pre>
+テスト・ファイル名　-O   -O -finline-functions
+-------------------+----+----------------------+-----------------------
+test1.c　　       　7.4   7.5                   for 文を使用
+test2.c　　　       5.7   5.9                   do 文を使用
+test3.c　　　       7.6   4.0                   for 文を使って配置を変更
+test4.c　　　       6.0   2.4                   do 文を使って配置を変更
+</pre>
+
+<h4>4-5.gcc の楽しみ</h4>
+
+<p>　gcc の特徴として謳っているインライン展開ができるかどうか、gcc のソース・コードを見ながら調べたことがあった。興味深いものがあり gcc に入り込んだ動機の 1 つにもなっている。ほかに gcc では関数の末尾再帰呼び出しをループに展開する機能もある。これは Lisp コンパイラでよく用いられる技術である。</p>
+<p>　この実験を思い出したのは文献 [6] を読んでいてのことであった。また、文献 [7] と [8] の連載を読めばこういった楽しみは倍増するであろう。文献 [7] で示されている bcopy を例題としてここで述べた dbra を生成する方法を応用すると、m68k 系の速いものが作れるだろう。</p>
+<p>　gcc のソース・コードを見ながら中間コードを調べてどのように最適化が進んでいくかを調べるのも楽しいだろう。最適化を施したコードを眺めていると変な命令列を発見することがある。例えば、リスト 7 で 「&lt;---　??」というマークをつけた所がそうである。これは全く意味がない。(a) から (b) までの命令列でも何も仕事をしていない。この原因を探るのも面白いだろう。そうすればより良い最適化のアイデアが生まれるかもしれない。<a href="#n.c">◆3</a></p>
+<p>　gcc のソース・コードを読む時は、gcc のドキュメントで触れている論文<a href="#r.i">★9</a> のほかにコンパイラの本があると便利である。例えば文献 [10] や [11] など。これらは Aho らが書いた。コンパイラ関係では著名な仕事をしている。Unix の C コンパイラの中で最もよく使われている C コンパイラは PCC(Portable C　Compiler) である。そこで使われているレジスタ割り当てのアルゴリズムは Sethi と Ullman が開発したもので、アルゴリズムの中である特別な数を求めてからレジスタを割り当てる部分がある。この数は Sethi, Ullman number と呼ばれていて、PCC のソース・コードにその旨が記されている。昔 PCC のソース・コードを読んでいてこの番号が出てきたがいったい何をやっているか不明であった。文献 [10] の原書を読んで納得した経験がある。そういえば、Richard が Aho の名前を出したことがある。GNU AWK(gawk) のドキュメント<a href="#r.l">★12</a> の話の中で、gawk のマニュアルとソフトウェア・レビューを AT&amp;T のベル研究所の Aho にやってもらったんだよ、と言っていた。</p>
+<p>　調べるうちに、それぞれのパスで最適化を行なうが、ある最適化パスを行なったために別の最適化の余地が発生して、以前に行なった最適化パスをもう 1 度行なわなければらない例が出てくる。(a) から (b) までの命令列の発生原因はこれかもしれない。それならば、最適化パスを増やして、以前に行なった最適化をある最適化パスの後にもう 1 度やってみれば前提が正しいかどうかを確かめることができる。なかなか面白いが、ただし実際にパスを増やして別の問題を引き起こしていないことを確認するのは難しい。</p>
+
+<h3 id="h.5">5. 今月のニュース</h3>
+
+<p>　ようやく GNU カーネルの作業が始まったという報告があった。GNU のライブラリに関する新しい配布条項のドラフトができて「コメントを求む」(RFC、Request for Comment) の状態になった。まだ詳細を見ていないのでコメントできないが、find は POSIX 1003.2 ドラフト 10 の仕様を満たしている、とのこと。</p>
+
+<h4>5-1.find(バージョン 2.0)</h4>
+
+<p>　find(ファイル検索コマンド) のバージョン 2.0 がリリースされた。これには find のほかに locate と xargs が入っている。locate は以前のリリースでは fast-find という名前であった。</p>
+
+<dl>
+<dt>●リリース日</dt><dd><p>1990 年 11 月 11 日</p></dd>
+<dt>●作者</dt><dd><p>djm(David J. MacKenzie、FSF)</p></dd>
+<dt>●投稿者</dt><dd><p>djm(David J. MacKenzie、FSF)</p></dd>
+<dt>●ニュース・グループ</dt><dd><p>gnu.utils.bug</p></dd>
+<dt>●入手方法</dt>
+<dd>
+<p>方　法      anonymous ftp</p>
+<p>マシン名    prep.ai.mit.edu(18.71.0.38)</p>
+<p>ファイル名  pub/gnu/find-2.0.tar.Z</p>
+</dd>
+<dt>●報告</dt>
+<dd>
+<ul>
+<li><p>xargs を追加。xargs は、リストを標準入力から受け取って xargs のコマンド引数をコマンドに、リストを引数に対応させて繰り返し実行させる。</p></li>
+<li><p>-print0 という述語を追加。find の-print 述語は対応するファイルを改行で区切って出力するが、-print0 は null で区切って出力する。xargs と組み合わせて使用する場合、ファイル名に空白や '(シングルクォート) を含むものも正しく扱えるようになる。</p></li>
+<li><p>-fstype(ファイル・システムのタイプを調べる述語) がいろいろな Unix で動き、automounter(ファイル・システムの mount/umount を自動的に行なうデーモン) があっても正しく動くようになる。</p></li>
+<li><p>シンボリック・リンクをたどる-follow ディレクトリの深さのレベルが、N の時のみ真になる述語　-maxdepth N　を追加する。</p></li>
+<li><p>roff で書かれたオンライン・マニュアルを整備する。</p></li>
+</ul>
+</dd>
+</dl>
+<h4>5-2.GNU カーネルの現状</h4>
+
+<p>　POE というものをベースに GNU カーネルの作業を開始した。この開発を共同して進めたいと考えているグループもあるようだ。<a href="#n.d">◆4</a></p>
+
+<dl>
+<dt>●リリース日</dt><dd><p>1990 年 11 月 11 日</p></dd>
+<dt>●投稿者</dt><dd><p>rms(Richard M. Stallman、FSF)</p></dd>
+<dt>●ニュース・グループ</dt><dd><p>gnu.announce</p></dd>
+<dt>●報告</dt>
+<dd>
+<ul>
+<li><p>CMU の弁護士が Mach マイクロカーネルの配布条項をつめている。<a href="#n.e">◆5</a></p></li>
+<li><p>CMU の POE(Mach カーネルの最上部にあり Unix の一部をエミュレートするもの) を完全にエミュレートするべくチューニング作業を開始した。</p></li>
+</ul>
+</dd>
+</dl>
+<h3 id="h.6">6. おわりに</h3>
+
+<p>　前回の予告とは裏腹に、今回はその内容と全く違ったものになってしまった。反省。いきあたりばったり書いているのが判明してしまったか ?　書き残した項目リストに追加することにしよう、前回の予告を。</p>
+<p>　現在、FSF では GNU Emacs 18.56 のαテストの前段階を行なっている。そのためのマイナーな更新が月に 2 回程度なされた。18.56 のリリースが近い。</p>
+
+<h2>参考文献</h2>
+<dl>
+<dt id="r.a">★1</dt><dd><p
+>「オープン・システムの裏側」unigram・x、1990 年 11 月 10 日、ディシジョン・ジャパン、4 ページ</p>
+</dd>
+<dt id="r.b">★2</dt><dd><p
+>斉藤信男「次世代 Unix のコンセプト」「Computer Today」1990 年 11 月号、サイエンス社</p>
+</dd>
+<dt id="r.c">★3</dt><dd><p
+>Samuel J. Leffler, Marshall Kirk McKusick, Michael J. Karels and John S. Quarterman,&quot;The Design and Implementaion of the 4.3BSD Unix Operating System&quot;, Addison-Wesley, 1989</p>
+</dd>
+<dt id="r.d">★4</dt><dd><p
+>MOTOROLA,&quot;MC68030 Enhanced 32-Bit Microprocessor User's Manual Second Edition&quot;, Prentice Hall</p>
+</dd>
+<dt id="r.e">★5</dt><dd><p
+>Richard M. Stallman,&quot;Using and Porting GNU CC&quot;, last updated 21 Febraury 1990 for version 1.37.1</p>
+<p>　これは C コンパイラの配布ソース・コードに入っているドキュメントである。</p>
+</dd>
+<dt id="r.f">★6</dt><dd><p
+>前田英明「アセンブラよさようなら、C よこんちには」「Computer Today」1990 年 11 月号、サイエンス社</p>
+</dd>
+<dt id="r.g">★7</dt><dd><p
+>太田昌孝「C の高速コーディング　bcopy の高速化」「Computer Today」1990 年 9 月号、サイエンス社</p>
+</dd>
+<dt id="r.h">★8</dt><dd><p
+>太田昌孝「C の高速コーディング　配列の掛け算」「Computer Today」1990 年 9 月号、サイエンス社</p>
+</dd>
+<dt id="r.i">★9</dt><dd><p
+>Jack Davidson and Christopher Fraser,&quot;Register Allocation and Exhaustive Peephole Optimization&quot;, Software Practice and Experience 14(9), Sept. 1984, 857-866.</p>
+</dd>
+<dt id="r.j">★10</dt><dd><p
+>A. V.エイホ、J. D.ウルマン / 土居訳「コンパイラ」培風館、1986</p>
+</dd>
+<dt id="r.k">★11</dt><dd><p
+>エイホ、セシィ、ウルマン / 原田訳「コンパイラ I、II」サイエンス社、1990</p>
+</dd>
+<dt id="r.l">★12</dt><dd><p
+>Diane Barlow Close and Richard Stallman with Paul H. Rubin and Arnold D. Robbins,&quot;The GAWK Manual&quot;, Edition 0.1β</p>
+</dd>
+</dl>
+
+
+<h3 id="addendum">〈補遺〉gcc が生成する命令、その後……</h3>
+
+<p>　gcc で生成する命令に焦点をあてている。gcc が、DBcc という Motorola 68020 の命令を使用するコードを生成することはなぜ難しいのか少し補足する。DBcc の命令は、演算と条件分岐の 2 通りの操作を 1 つの命令で行なうので、ソース・コードの意味が一致していればこの命令を適用することができる。この意味を満たしているかどうかの判断を特別に入れる必要がある点と、その判断を入れる器があらかじめ備わっているかという点が問題となる。</p>
+<p>　この記事に関して読者から手紙をいただいた。概要を次に示す。</p>
+
+<h3>〈読者より〉</h3>
+<p>　「4.5 gcc の楽しみ」にある最適化の不備について、何も動作しないループを確かめるために、単純化して</p>
+
+<pre>
+    main ()
+    {
+       int i;
+
+       for (i =　0; i　&lt;= 1000; i++)
+          ;
+    }
+</pre>
+
+<p>というプログラムをコンパイルしても、何もしないループが生成される。「フロー解析」の後に「ループ最適化」すれば解決する問題ではない、と考える。原因は、現在の gcc に「何もしないループ」を検出・削除する機能がないからである、といことではないか ?　この例では i という変数が初期化され、参照、変更が行なわれるから、確かに空でない life range があり、空のループは削除可能なコードだとは認識されない、と考える。</p>
+
+<p>　これに対して、次のような回答をした。</p>
+
+<h3>〈読者へ〉</h3>
+<p>　単純化した例を調べたところ、「ループ最適化を追加すればよい」という問題ではないことがわかった。この「空のループの検出」に関して rms に尋ねたところ、「空のループを削除する最適化を入れることは危険である。というのは待ち時間を生成したいために空のループを使用することがあるからである」との意見であった。そこで、「空のループを削除する最適化オプションを新たに追加してはどうだろう ?」という提案を行なったところ、rms から「普通のプログラマ『真のプログラマ』は空のループを書かない」という返事があった。<a href="#n.f">◆6</a></p>
+
+<p>　gcc バージョン 1.37.1 では次のような C 言語ソース・プログラムでも dbra 命令を生成することができた。</p>
+
+<pre>
+    :
+    int
+    func (a, size)
+　       int a[];
+　       int size;
+    {
+　    short i;
+      int t;
+
+　    if (size &gt; MAX_SHORT)
+        abort ();
+
+      if (size &lt; 1)
+        return 0;
+
+      i = size - 1;
+      t = 0;
+      do
+        {
+         t += a[i];
+　      }
+      while (i--);
+
+      return t;
+    }
+</pre>
+
+<p>最新バージョン 2.1 では ?</p>
+
+<p>　念のために gcc バージョン 2.1 ではどうなるか調べてみたが、dbra 命令は生成されていない。どうして生成されないかを調べてみた。</p>
+<p>　まず、C 言語のソースにいろいろ変更を加えて、gcc 2.1 で dbra 命令を生成できるかどうかを試したが、うまくいかなかった。本文中の dbra 用のソース・コード (test2.c) をコンパイルすると、次のようなコードが得られる。</p>
+
+<pre>
+.globl _func
+_func:
+　　    link a6,#0
+　　    movel a6@(8),a1
+　　    movew a6@(14),d1
+　    　subqw #1,d1
+　    　clrl d0
+　　    movew #65535,d2
+L11:
+　    　movew d1,a0
+　　    addl a1@(a0:l:4),d0
+　　    subqw #1,d1
+　　    cmpw d1,d2
+　　    jne L11
+　　    ulk a6
+　　    rts
+</pre>
+
+<p>　そこで、gcc のソース・コードを調べてみた。本文に示す最適化テンプレートとは少し　2.2.2 の dbra を生成しそうなテンプレートは、例えば、次のようなものがある。</p>
+
+<p>リスト 7. gcc 2.2.2 の m68k の MD, dbra のエントリ</p>
+
+<pre>
+;; Decrement-and-branch insns.
+(define_insn &quot;&quot;
+  [(set (pc)
+      (if_then_else
+       (ne (match_operand:HI 0　&quot;general_operand&quot; &quot;+g&quot;)
+           (const_int 0))
+       (label_ref (match_operand 1 &quot;&quot; &quot;&quot;))
+       (pc)))
+   (set (match_dup 0)
+      (plus:HI (match_dup 0)
+               (const_int -1)))]
+  &quot;&quot;
+　&quot;*
+{
+  CC_STATUS_INIT;
+  if (DATA_REG_P (operands[0]))
+    return \&quot;dbra %0,%l1\&quot;;
+  if (GET_CODE (operands[0]) == MEM)
+    {
+#ifdef MOTOROLA
+#ifdef NO_ADDSUB_Q
+    return \&quot;sub%.w %#1,%0\;jbcc %l1\&quot;;
+#else
+    return \&quot;subq%.w %#1,%0\;jbcc %l1\&quot;;
+#endif
+#else /* not MOTOROLA */
+　　return \&quot;subqw %#1,%0\;jcc %l1\&quot;;
+#endif
+    }
+#ifdef MOTOROLA
+#ifdef SGS_CMP_ORDER
+#ifdef NO_ADDSUB_Q
+  return \&quot;sub%.w %#1,%0\;cmp%.w %0,%#-1\;jbne %l1\&quot;;
+#else
+  return \&quot;subq%.w %#1,%0\;cmp%.w %0,%#-1\;jbne %l1\&quot;;
+#endif
+#else /* not SGS_CMP_ORDER */
+  return \&quot;subq%.w %#1,%0\;cmp%.w %#-1,%0\;jbne %l1\&quot;;
+#endif
+#else /* not MOTOROLA */
+  return　\&quot;subqw %#1,%0\;cmpw %#-1,%0\;jne %l1\&quot;;
+#endif
+}&quot;)
+</pre>
+
+<p>なぜ dbra を生成しないか ?</p>
+
+<p>(1)gcc 1.40 では</p>
+<p>　gcc バージョン 1.40 では dbra 命令を生成可能である。gcc のどの内部パスで生成しているかを調べてみよう。gcc ではいくつかのパスの中間形式のダンプをとることができる。-dX というオプションで X の部分に希望するパスを指定する。この他にも次のようなオプションがある。</p>
+
+<p>r</p>
+<p>　RTL 生成部からの中間形式のダンプ。ダンプ・ファイルには .rtl という名前が追加される。</p>
+
+<p>j</p>
+<p>　最初の分岐最適化の後の中間形式のダンプ。ダンプ・ファイルには .jump という名前が追加される。</p>
+
+<p>s</p>
+<p>　共通部分式削除部 (CSE、分岐最適化も少し行なわれている可能性がある) の後の中間形式のダンプ。ファイル名の拡張子は .cse である。</p>
+
+<p>L</p>
+<p>　ループ最適化部の後の中間形式のダンプ。ファイル名の拡張子は .loop　である。</p>
+
+<p>f</p>
+<p>　フロー解析部の後の中間形式のダンプ。ファイル名の拡張子は .flow である。</p>
+
+<p>c</p>
+<p>　命令組み合わせ部の後の中間形式のダンプ。ファイル名の拡張子は .combine である。</p>
+
+<p>l</p>
+<p>　局所レジスタ割り当て部の後の中間形式のダンプ。ファイル名の拡張子は .lreg である。</p>
+
+<p>g</p>
+<p>　広域レジスタ割り当て部の後の中間形式のダンプ。ファイル名の拡張子は .greg である。</p>
+
+<p>d</p>
+<p>　遅延分岐命令スケジューリングの後の中間形式のダンプ。ファイル名の拡張子は .dbr である。</p>
+
+<p>J</p>
+<p>　最後の分岐最適化の後の中間形式のダンプ。ファイル名の拡張子は .jump2 である。</p>
+
+
+<p>  全てのダンプ・フラグを有効にして中間形式を作成し、その中に dbra 命令の意味が表れるのはどのパスの後かを調べる。なお、dbra の意味は本文のリスト 2 より、次のような形式であることがわかる。</p>
+
+<pre>
+    (set (pc)
+         (if_then_else
+          (ne(compare (plus:HI (match_operand:HI 0　&quot;general_operand&quot; &quot;g&quot;)
+                               (const_int　-1))
+                      (const_int　-1))
+　           (const_int 0))
+　        (label_ref (match_operand 1　&quot;&quot; &quot;&quot;))
+　        (pc)))
+　  (set (match_dup 0)
+         (plus:HI (match_dup 0)
+                  (const_int　-1)))
+</pre>
+
+<p>　調査した後、命令組み合わせ部で dbra を選択していることがわかった。フロー解析部の後の次のような中間形式を、(一部のみ示す)</p>
+
+<pre>
+(insn 23 20 24 (set (reg/v:HI 58)
+       (plus:HI (reg/v:HI 58)
+          (const_int -1))) -1 (nil)
+   (nil))
+
+(insn 24 23 25 (set (cc0)%%(A)
+      (compare (reg/v:HI 58)
+          (const_int -1))) -1 (insn_list 23 (nil))
+   (nil))
+
+(jump_insn 25 24 28 (set (pc)
+      (if_then_else (ne (cc0)
+              (const_int 0))
+          (label_ref 14)
+          (pc))) -1 (nil)
+   (nil))
+</pre>
+
+<p>　命令組み合わせ部では次のように変換し、insn 23 と 24、25 を組み合わせている。<a href="#n.g">◆7</a></p>
+
+<pre>
+(note 23 20 24 &quot;&quot; NOTE_INSN_DELETED)
+
+(note 24 23 25 &quot;&quot; NOTE_INSN_DELETED)
+
+(jump_insn 25 24 28 (parallel[
+      (set (pc)
+          (if_then_else (ne (compare (plus:HI (reg/v:HI 58)
+                       (const_int -1))
+                      (const_int -1))
+                     (const_int 0))
+                  (label_ref 14)
+                  (pc)))
+      (set (reg/v:HI 58)
+          (plus:HI (reg/v:HI 58)
+             (const_int -1)))
+     ] )　240 (insn_list 23 (nil))
+  (nil))
+</pre>
+
+<p>　insn 23　と 24、25　の組み合わせを行なうと、リスト 2 に示す dbra のエントリと等しくなるために、変換がなされているわけである。</p>
+
+<p>(2)gcc 2.2.2 では</p>
+<p>　こんどは gcc バージョン 2.2.2 の命令組み合わせ部の前後の中間形式のダンプをとり、考察してみる。</p>
+<p>　2.2.2 では　-da というオプションを与えると全てのダンプをとることができるので楽になった。ちなみに、どのようなパスが追加になったかを、ダンプ・ファイルのオプションから眺めてみる。+ がついているものが新規オプションである。</p>
+
+<p>r</p>
+<p>　RTL 生成部からの中間形式のダンプ。ダンプ・ファイルには .rtl という名前が追加される。</p>
+
+<p>j</p>
+<p>　最初のジャンプ最適化の後の中間形式のダンプ。ファイル名の拡張子は .jump である。</p>
+
+<p>s</p>
+<p>　共通部分式削除部 (CSE、分岐最適化も少し行なわれている可能性がある) の後の中間形式のダンプ。ファイル名の拡張子は .cse である。</p>
+
+<p>L</p>
+<p>　ループ最適化部の後の中間形式のダンプ。ファイル名の拡張子は .loop である。</p>
+
+<p>+t</p>
+<p>　2 回目の CSE のパスの後の中間形式のダンプ (分岐最適化も少し行なわれている可能性がある)。ファイル名の拡張子は .cse2 である。</p>
+
+<p>f</p>
+<p>　フロー解析部の後の中間形式のダンプ。ファイル名の拡張子は .flow である。</p>
+
+<p>c</p>
+<p>　命令組み合せ部の後の中間形式のダンプ。ファイル名の拡張子は .combine である。</p>
+
+<p>+S</p>
+<p>　最初の命令スケジューリングのパスの後の中間形式のダンプ。ファイル名の拡張子は .sched である。</p>
+
+<p>l</p>
+<p>　局所レジスタ割り当て部の後の中間形式のダンプ。ファイル名の拡張子は .lreg である。</p>
+
+<p>g</p>
+<p>　広域レジスタ割り当て部の後の中間形式のダンプ。ファイル名の拡張子は .greg である。</p>
+
+<p>+R</p>
+<p>　2 回目の最初の命令スケジューリングのパスの後の中間形式のダンプ。ファイル名の拡張子は .sched2 である。</p>
+
+<p>J</p>
+<p>　最後の分岐最適化の後の中間形式のダンプ。ファイル名の拡張子は .jump2 である。</p>
+
+<p>d</p>
+<p>　遅延分岐命令スケジューリングの後の中間形式のダンプ。ファイル名の拡張子は .dbr である。</p>
+
+<p>+k</p>
+<p>　レジスタに割り当てられた変数をレジスタ・スタックへ割り当て直すパスの後の中間形式のダンプ。ファイル名の拡張子は .stack である。</p>
+
+<p>+a</p>
+<p>　全てのダンプ・ファイルをとる。</p>
+<p>少し長いが、最適化オプションをつけたときのフロー解析後のダンプから、関係する部分を抜き出す。gcc のバージョン 1.40 ではフロー解析の後で dbra 命令を採用していた。gcc 2.2.2 ではフロー解析の後では中間形式がどのようになっているかを調べるために、ここにダンプを示す。</p>
+
+<pre>
+(insn 45 14 16 (set (reg:HI 33)             %%(B)
+      (const_int 65535)) -1 (nil)
+  (expr_list:REG_EQUAL (const_int 65535)
+      (nil)))
+
+(note 16 45 17 &quot;&quot; NOTE_INSN_LOOP_BEG)
+
+(code_label 17 16 19 11 &quot;&quot;)
+
+(note 19 17 20 &quot;&quot; NOTE_INSN_DELETED)
+
+(insn 20 19 21 (set (reg:SI 32)
+     (sign_extend:SI (reg/v:HI 30))) 47 {extendhisi2} (nil)
+  (nil))
+
+(insn 21 20 23 (set (reg/v:SI 31)
+      (plus:SI (reg/v:SI 31)
+          (mem/s:SI (plus:SI (mult:SI (reg:SI 32)
+                      (const_int 4))
+                  (reg/v:SI 28))))) 80 {addsi3} (insn_list 20 (nil))
+  (expr_list:REG_DEAD (reg:SI 32)
+      (nil)))
+
+(note 23 21 26 &quot;&quot; NOTE_INSN_LOOP_CONT)
+
+(insn 26 23 28 (set (reg/v:HI 30)
+　　　(plus:HI (reg/v:HI 30)
+　　　　　(const_int-1))) 82 {addhi3} (nil)
+  (nil))
+
+(insn 28 26 29 (set (cc0)
+      (compare (reg/v:HI 30)
+          (reg:HI 33))) 12 {cmphi} (insn_list 26 (nil))
+  (nil))
+
+(jump_insn 29 28 32 (set (pc)
+      (if_then_else (ne (cc0)
+              (const_int 0))
+          (label_ref 17)
+          (pc))) 256 {bne} (nil)
+  (nil))
+</pre>
+
+<p>　この中間形式をみると、dbra への変換パターンに一致していないことがわかる。insn 28 で 30 番のレジスタ (reg/v:HI 30) と 33 番のレジスタ (reg:HI 33) を比較 (compare) している。ところが、dbra への変換規則を記しているリスト 7 ではレジスタ (match_opernad:HI 0) と定数 (const_int0) を比較しているので、一致しなかったのであろう。</p>
+<p>　なぜレジスタ同士の比較になったのか。gcc 1.40 ではレジスタと定数の比較 (前述 (A) の行) であったが 2.2.2 でそうしなくなった。ループの外側 (前述 (B) の行) でレジスタに定数を入れておき、ループの本体ではレジスタに入っている定数を使うようなコード生成戦略を採っている。これは RISC CPU では非常に有効であり、CISC でも一般的に有効である。しかし、dbra 命令を生成させるためにはこれが裏目に出てしまった、という考察を行なった。</p>
+<p>　念の為、「gcc 2.2.2 では dbra が生成できないのか」という質問を gcc のメーリング・リストに問い合わせてみた。しばらくした後、MIT の Slayer から次の C ソース・コードを使って　-O2 というオプションを与えると生成することができる、というメールがあった。<a href="#n.h">◆8</a></p>
+
+<pre>
+void
+foo (short x, char *p)
+{
+  while (--x &gt;= 0)
+    *p++ =　9;
+}
+</pre>
+
+<p>　なるほど、次に示すように dbra を使ったコードが生成される。</p>
+
+<pre>
+.globl _foo
+_foo:
+        link a6,#0
+        movel a6@(12),a0
+        movew a6@(10),d0
+        subqw #1,d0
+        jmi L3
+L4:
+        moveb #9,a0@+
+        dbra d0,L4
+L3:
+        unlk a6
+        rts
+</pre>
+
+<p>　フロー解析部の後のダンプをとってみる。</p>
+
+<pre>
+(insn 12 35 13 (set (reg/v:HI 28)
+      (plus:HI (reg/v:HI 28)
+          (const_int-1))) 82 {addhi3} (nil)
+  (nil))
+
+(insn 13 12 14 (set (cc0)
+       (reg/v:HI 28))　-1 (insn_list 12 (nil))
+  (nil))
+
+(jump_insn 14 13 24 (set (pc)
+       (if_then_else (ge (cc0)
+               (const_int 0))
+           (label_ref 19)
+           (pc))) 261 {bge} (nil)
+　(expr_list:REG_NONNEG (nil)
+       (nil)))
+</pre>
+
+<p>　dbra の適合パターンとは似ていないが、命令組み合せ部で次のように変換している。</p>
+
+<pre>
+(jump_insn 14 13 24 (parallel[
+           (set (pc)
+               (if_then_else (ge (plus:HI (reg/v:HI 28)
+                           (const_int -1))
+                       (const_int 0))
+                   (label_ref 19)
+                   (pc)))
+           (set (reg/v:HI 28)
+               (plus:HI (reg/v:HI 28)
+                   (const_int -1)))
+      ] )　281 {decrement_and_branch_until_zero-1} (nil
+  (expr_list:REG_NONNEG (nil)
+      (nil)))
+</pre>
+
+<p>まとめ</p>
+
+<p>　以上のことから、gcc のソース・コードから dbra を生成しそうなパターンを見つけて、対応する C ソース・コードを書いたとしても、gcc バージョン 2 ではうまくいかないことがわかった。とはいうものの、生成できないことはない。</p>
+
+
+<hr/>
+<h2>Think GNU　連載第 11 回【脚注】</h2>
+
+<dl>
+<dt id="n.a">◆1</dt><dd><p
+>i18n は何の略かについて述べた。同じ分野で l10n という言葉もあるが、これは localization の略である。</p>
+</dd>
+<dt id="n.b">◆2</dt><dd><p
+>gcc が生成する命令については、後日談も含めこの章の最後に〈補遺〉としてまとめておいたので参照されたい。</p>
+</dd>
+<dt id="n.c">◆3</dt><dd><p
+>原因を後述の補遺で説明する。</p>
+</dd>
+<dt id="n.d">◆4</dt><dd><p
+>POE は Mach マイクロカーネル用のサブセット Unix サーバ。不完全ながらもファイル・システムも備える。</p>
+</dd>
+<dt id="n.e">◆5</dt><dd><p
+>CMU の人々は POE は何かの省略形ではないと言っているが、Richard によれば「Preserve Our Essence」の略じゃないの、とのこと。</p>
+</dd>
+<dt id="n.f">◆6</dt><dd><p
+>こちらの質問の意図は、「もちろん、わざわざ最初から空のループを書くプログラマはいない。しかし、他人のプログラムを修正した場合は、想定した場所以外の所で空のループが発生し、その無駄のために効率か下がるのではないか ?」ということである。</p>
+</dd>
+<dt id="n.g">◆7</dt><dd><p
+>中間形式を見てもわかるように (insn X　...) の X が id 番号になっている。(jump_insn X　...) の X も同様である。どの命令かを示すために X で指定している。</p>
+</dd>
+<dt id="n.h">◆8</dt><dd><p
+>gcc の内部構造の質問も、メーリング・リストに問い合わせてみると、親切に教えてくれる人がいるものである。</p>
+</dd>
+</dl>
+<hr/>
+<ul>
+<li><a href="../orig/copying">取り扱い注意</a></li>
+<li><a href="tga12.html">次→</a></li>
+<li><a href="tga10.html">←前</a></li>
+<li><a href="tga00.html">まえがき、目次</a></li>
+<li><a href="../">(HTML版)Think GNU配布</a></li>
+</ul>
+</body></html>

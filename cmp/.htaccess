@@ -1,0 +1,4 @@
+ForceType "text/plain; charset=UTF-8"
+<Files *.html>
+ForceType "text/html; charset=UTF-8"
+</Files>

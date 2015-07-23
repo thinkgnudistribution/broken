@@ -1,0 +1,39 @@
+#!/usr/bin/env perl
+
+use utf8;
+
+# THIS PROGRAM IS BROKEN!
+# Copyright © 2015 thinkgnudistribution@gmail.com
+# 詳細についてはテキスト: ‘GPLed’を参照してください。
+
+use strict;
+use warnings;
+use charnames ':full';
+use Fatal 'open';
+use FindBin;
+use lib "$FindBin::RealBin/../lib";
+
+use Canon 'decoder';
+
+# 入力をUTF-8化する。入力のエンコーディングは、ある程度推測する。
+# なおここでは、Think GNUに見られた機種依存文字の補正を行っている。
+
+my ($file) = @ARGV;
+
+binmode STDOUT, ':utf8';
+
+my $dec = decoder $file;
+open my $in, '<', $file;
+
+binmode STDOUT, ':utf8';
+while (my $line = <$in>) {
+	die $file if $line =~ /&copy;/;
+	die $file if $line =~ /&#x21e8;/;
+	$line =~ s/\x83\xe1/&copy;/g;
+	$line =~ s/\x98\x9c/&copy;/g;
+	$line =~ s/\x81\xae/&#x21e8;/g;
+	$line = $dec->decode($line);
+	$line =~ s/&copy;/©/g;
+	$line =~ s/&#x21e8;/\N{RIGHTWARDS WHITE ARROW}/g;
+	print $line;
+}
